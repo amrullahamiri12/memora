@@ -113,86 +113,8 @@ function rowToFlashcardData(row) {
 }
 
 async function importFlashcardsFromCsv(csvText) {
-  const rows = parseFlashcardCsv(csvText);
-  const results = { imported: 0, skipped: 0, errors: [], warnings: [] };
-  const topicMcqCounts = new Map();
-
-  for (const row of rows) {
-    const subject = row.subject?.trim();
-    const topic = row.topic?.trim();
-    const data = rowToFlashcardData(row);
-
-    if (!subject || !topic) {
-      results.errors.push({
-        line: row.lineNumber,
-        message: 'subject and topic are required',
-      });
-      continue;
-    }
-
-    if (data.validationErrors.length > 0) {
-      results.errors.push({
-        line: row.lineNumber,
-        message: data.validationErrors.join('; '),
-      });
-      continue;
-    }
-
-    if (!['EASY', 'MEDIUM', 'HARD'].includes(data.difficulty)) {
-      results.errors.push({
-        line: row.lineNumber,
-        message: `Invalid difficulty "${row.difficulty}" — use Easy, Medium, or Hard`,
-      });
-      continue;
-    }
-
-    try {
-      const topicRecord = await findOrCreateTopic(subject, topic);
-      const topicKey = topicRecord.id;
-
-      if (data.questionType === 'MCQ') {
-        topicMcqCounts.set(topicKey, (topicMcqCounts.get(topicKey) || 0) + 1);
-      }
-
-      const existing = await prisma.flashcard.findFirst({
-        where: { topicId: topicRecord.id, question: data.question },
-      });
-
-      if (existing) {
-        results.skipped++;
-        continue;
-      }
-
-      const { validationErrors: _errors, ...createData } = data;
-      await prisma.flashcard.create({
-        data: { topicId: topicRecord.id, ...createData },
-      });
-      results.imported++;
-    } catch (err) {
-      results.errors.push({
-        line: row.lineNumber,
-        message: err.message || 'Failed to import row',
-      });
-    }
-  }
-
-  for (const [topicId, addedMcq] of topicMcqCounts) {
-    if (addedMcq === 0) continue;
-    const mcqTotal = await prisma.flashcard.count({
-      where: { topicId, questionType: 'MCQ' },
-    });
-    if (mcqTotal < 4) {
-      const topicRecord = await prisma.topic.findUnique({
-        where: { id: topicId },
-        include: { subject: true },
-      });
-      results.warnings.push(
-        `"${topicRecord.subject.name} / ${topicRecord.name}" has ${mcqTotal} MCQ card(s). Add at least 4 MCQ cards per topic for better auto-generated wrong answers.`
-      );
-    }
-  }
-
-  return results;
+  const { importFlashcardsFromCsvFast } = require('./csvImportFast');
+  return importFlashcardsFromCsvFast(csvText);
 }
 
 async function exportFlashcardsCsv() {
@@ -249,6 +171,7 @@ function getCsvTemplate() {
 
 module.exports = {
   parseFlashcardCsv,
+  rowToFlashcardData,
   importFlashcardsFromCsv,
   exportFlashcardsCsv,
   getCsvTemplate,

@@ -91,11 +91,17 @@ module.exports = async (req, res) => {
       return json(res, 200, rows);
     }
 
+    const body =
+      req.method === 'POST' && match(p, '/admin/flashcards/import')
+        ? await parseBody(req)
+        : null;
+
     const fast = await require('../server/lib/fastApi').tryHandle(
       req.method,
       p,
       query,
-      authHeader
+      authHeader,
+      body
     );
     if (fast) return json(res, fast.status, fast.body);
   } catch (err) {

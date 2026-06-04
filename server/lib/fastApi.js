@@ -278,7 +278,30 @@ async function profile(user, query) {
 }
 
 /** Returns { status, body } or null if this handler does not apply. */
-async function tryHandle(method, path, query, authHeader) {
+async function tryHandle(method, path, query, authHeader, body = null) {
+  if (method === 'POST' && match(path, '/admin/flashcards/import')) {
+    const auth = await requireUser(authHeader);
+    if (auth.error) return auth.error;
+    if (!isStaff(auth.user.role)) {
+      return { status: 403, body: { error: 'Admin access required' } };
+    }
+    const csv = body?.csv;
+    if (!csv || typeof csv !== 'string') {
+      return { status: 400, body: { error: 'CSV content is required' } };
+    }
+    const { getMaxCsvBytes } = require('./config');
+    if (Buffer.byteLength(csv, 'utf8') > getMaxCsvBytes()) {
+      return { status: 413, body: { error: 'CSV file is too large (max 2MB)' } };
+    }
+    try {
+      const { importFlashcardsFromCsvFast } = require('./csvImportFast');
+      const results = await importFlashcardsFromCsvFast(csv);
+      return { status: 200, body: results };
+    } catch (err) {
+      return { status: 400, body: { error: err.message || 'Invalid CSV' } };
+    }
+  }
+
   if (method !== 'GET') return null;
 
   const needsAuth =
