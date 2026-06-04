@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const db = require('./pg');
 const { paginatedResponse } = require('./pagination');
+const { canDeleteUser } = require('./roles');
 
 const STAFF = ['ADMIN', 'SUPER_ADMIN'];
 
@@ -124,6 +125,43 @@ async function adminUsers(query) {
     status: 200,
     body: paginatedResponse(listRes.rows, total, { page, limit }),
   };
+}
+
+function parseAdminUserId(path) {
+  const m = path.match(/(?:\/api)?\/admin\/users\/([^/?]+)$/);
+  return m ? m[1] : null;
+}
+
+async function deleteAdminUser(actor, targetId) {
+  const { rows } = await db.query(
+    'SELECT id, role FROM users WHERE id = $1 LIMIT 1',
+    [targetId]
+  );
+  const existing = rows[0];
+  if (!existing) {
+    return { status: 404, body: { error: 'User not found' } };
+  }
+
+  if (!canDeleteUser(actor, existing)) {
+    const message =
+      targetId === actor.id
+        ? 'You cannot delete your own account while logged in'
+        : 'You cannot delete this user';
+    return { status: 403, body: { error: message } };
+  }
+
+  if (existing.role === 'SUPER_ADMIN') {
+    const countRes = await db.query(
+      `SELECT COUNT(*)::int AS total FROM users WHERE role = 'SUPER_ADMIN' AND id <> $1`,
+      [targetId]
+    );
+    if ((countRes.rows[0]?.total ?? 0) === 0) {
+      return { status: 400, body: { error: 'Cannot delete the last super admin' } };
+    }
+  }
+
+  await db.query('DELETE FROM users WHERE id = $1', [targetId]);
+  return { status: 200, body: { message: 'User deleted' } };
 }
 
 async function dashboardSubjects(user) {
@@ -302,6 +340,18 @@ async function tryHandle(method, path, query, authHeader, body = null) {
     }
   }
 
+  if (method === 'DELETE') {
+    const targetId = parseAdminUserId(path);
+    if (targetId) {
+      const auth = await requireUser(authHeader);
+      if (auth.error) return auth.error;
+      if (!isStaff(auth.user.role)) {
+        return { status: 403, body: { error: 'Admin access required' } };
+      }
+      return deleteAdminUser(auth.user, targetId);
+    }
+  }
+
   if (method !== 'GET') return null;
 
   const needsAuth =
@@ -326,7 +376,7 @@ async function tryHandle(method, path, query, authHeader, body = null) {
     return adminSubjects();
   }
 
-  if (match(path, '/admin/users')) {
+  if (adminUsersListPath(path)) {
     if (!isStaff(user.role)) return { status: 403, body: { error: 'Admin access required' } };
     return adminUsers(query);
   }
@@ -349,6 +399,11 @@ async function tryHandle(method, path, query, authHeader, body = null) {
 
 function match(path, suffix) {
   return path === suffix || path.endsWith(suffix);
+}
+
+function adminUsersListPath(path) {
+  const normalized = path.replace(/\/$/, '');
+  return normalized === '/admin/users' || normalized === '/api/admin/users';
 }
 
 module.exports = { tryHandle };
