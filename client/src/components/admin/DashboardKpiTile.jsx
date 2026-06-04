@@ -29,11 +29,7 @@ const TONE_STYLES = {
   },
 };
 
-export function formatDashboardNum(value) {
-  if (value == null || value === '') return '—';
-  if (typeof value === 'string' && value.endsWith('%')) return value;
-  return Number(value).toLocaleString();
-}
+import { formatDashboardNum } from '../../utils/formatDashboardNum';
 
 export default function DashboardKpiTile({ label, value, hint, tone = 'default' }) {
   const styles = TONE_STYLES[tone] || TONE_STYLES.default;

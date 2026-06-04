@@ -419,12 +419,35 @@ npm run db:seed             # seed admin + sample cards
 | `Too many attempts` on login | Wait 15 minutes or restart server (dev rate limit resets) |
 | Frontend API not reaching backend | Confirm Vite proxy in `client/vite.config.js` points to port 5001 |
 
+## Testing & CI
+
+Tests run **before every Vercel production build** (`build:vercel` starts with `npm run test`). [GitHub Actions](.github/workflows/ci.yml) also runs on pushes and PRs to `main`.
+
+| Layer | Tool | What is covered |
+|-------|------|-----------------|
+| Server unit | Vitest | Question types, MCQ grading, roles, config, auth helpers, rate limits |
+| Server API smoke | Vitest + Supertest | Health, 404, auth config (DB mocked) |
+| Client unit | Vitest | Report date helpers, role permission helpers |
+
+```bash
+npm run test              # server + client
+npm run test --prefix server
+npm run test --prefix client
+npm run ci                # test + client production build (matches deploy gate)
+npm run lint              # eslint (client; fix or tighten before requiring in CI)
+```
+
+**Recommended workflow:** run `npm run ci` before pushing; GitHub Actions and Vercel run the same tests before build/deploy. For deeper coverage later, add Prisma/SQLite integration tests or Playwright E2E against a seeded dev DB.
+
 ## Scripts
 
 | Command | Location | Description |
 |---------|----------|-------------|
 | `npm run setup` | root | Install, migrate, seed |
 | `npm run dev` | root | Run API + client concurrently |
+| `npm run test` | root | Server + client unit/API smoke tests |
+| `npm run ci` | root | Tests and client build (pre-deploy check) |
+| `npm run lint` | root | Client ESLint |
 | `npm run dev` | `server/` | API only (nodemon) |
 | `npm run dev` | `client/` | Vite dev server |
 | `npm run build` | `client/` | Production frontend build |

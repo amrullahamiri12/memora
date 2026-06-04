@@ -17,7 +17,8 @@ import Button from '../../components/ui/Button';
 import Alert from '../../components/ui/Alert';
 import Spinner from '../../components/ui/Spinner';
 import Input from '../../components/ui/Input';
-import DashboardKpiTile, { formatDashboardNum } from '../../components/admin/DashboardKpiTile';
+import DashboardKpiTile from '../../components/admin/DashboardKpiTile';
+import { formatDashboardNum } from '../../utils/formatDashboardNum';
 import { api } from '../../utils/api';
 import { defaultReportRange, buildReportQuery } from '../../utils/reportDates';
 
