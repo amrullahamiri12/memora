@@ -13,11 +13,18 @@ async function authMiddleware(req, res, next) {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, name: true, email: true, role: true },
+      select: { id: true, name: true, email: true, role: true, deactivatedAt: true },
     });
 
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
+    }
+
+    if (user.deactivatedAt) {
+      return res.status(403).json({
+        error: 'This account has been closed',
+        code: 'ACCOUNT_DEACTIVATED',
+      });
     }
 
     req.user = user;

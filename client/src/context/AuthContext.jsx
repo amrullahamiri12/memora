@@ -116,6 +116,15 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const closeAccount = async (password) => {
+    const data = await api('/auth/close-account', {
+      method: 'POST',
+      body: JSON.stringify({ password: password || undefined }),
+    });
+    logout();
+    return data;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -131,6 +140,7 @@ export function AuthProvider({ children }) {
         forgotPassword,
         resetPassword,
         loginWithGoogle,
+        closeAccount,
         logout,
       }}
     >

@@ -5,16 +5,18 @@ const db = require('./pg');
 const { paginatedResponse } = require('./pagination');
 const {
   canAssignRole,
-  canDeleteUser,
   canEditUser,
   assertRoleChangeAllowed,
 } = require('./roles');
 const {
   USER_PUBLIC_COLUMNS,
   isEmailVerified,
+  isUserActive,
   publicUser,
+  deactivatedAccountResponse,
   verificationRequiredResponse,
 } = require('./authUser');
+const { deactivateUser, reactivateUser } = require('./userLifecycle');
 
 const VALID_ROLES = ['USER', 'ADMIN', 'SUPER_ADMIN'];
 
@@ -38,6 +40,9 @@ async function requireUser(authHeader, { requireVerified = false } = {}) {
     );
     if (!rows[0]) {
       return { error: { status: 401, body: { error: 'User not found' } } };
+    }
+    if (!isUserActive(rows[0])) {
+      return { error: deactivatedAccountResponse() };
     }
     if (requireVerified && !isEmailVerified(rows[0])) {
       return { error: verificationRequiredResponse() };
@@ -134,14 +139,18 @@ const GUEST_EMAIL_PATTERN = '%@guest.memora.local';
 
 async function adminUsers(query) {
   const { page, limit, skip } = parsePage(query, 15);
+  const includeInactive = query.includeInactive === 'true' || query.includeInactive === '1';
+  const activeFilter = includeInactive ? '' : ' AND deactivated_at IS NULL';
   const [countRes, listRes] = await Promise.all([
-    db.query(`SELECT COUNT(*)::int AS total FROM users WHERE email NOT LIKE $1`, [
-      GUEST_EMAIL_PATTERN,
-    ]),
+    db.query(
+      `SELECT COUNT(*)::int AS total FROM users WHERE email NOT LIKE $1${activeFilter}`,
+      [GUEST_EMAIL_PATTERN]
+    ),
     db.query(
       `SELECT id, name, email, role, created_at AS "createdAt",
-              (email_verified_at IS NOT NULL) AS "emailVerified"
-       FROM users WHERE email NOT LIKE $3
+              (email_verified_at IS NOT NULL) AS "emailVerified",
+              (deactivated_at IS NULL) AS "active"
+       FROM users WHERE email NOT LIKE $3${activeFilter}
        ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
       [limit, skip, GUEST_EMAIL_PATTERN]
     ),
@@ -193,7 +202,8 @@ function validateUserPayload(body, { requirePassword }) {
 
 async function countOtherSuperAdmins(excludeUserId) {
   const countRes = await db.query(
-    `SELECT COUNT(*)::int AS total FROM users WHERE role = 'SUPER_ADMIN' AND id <> $1`,
+    `SELECT COUNT(*)::int AS total FROM users
+     WHERE role = 'SUPER_ADMIN' AND deactivated_at IS NULL AND id <> $1`,
     [excludeUserId]
   );
   return countRes.rows[0]?.total ?? 0;
@@ -381,30 +391,8 @@ async function subjectsEnroll(user, body) {
   };
 }
 
-async function deleteAdminUser(actor, targetId) {
-  const { rows } = await db.query(
-    'SELECT id, role FROM users WHERE id = $1 LIMIT 1',
-    [targetId]
-  );
-  const existing = rows[0];
-  if (!existing) {
-    return { status: 404, body: { error: 'User not found' } };
-  }
-
-  if (!canDeleteUser(actor, existing)) {
-    const message =
-      targetId === actor.id
-        ? 'You cannot delete your own account while logged in'
-        : 'You cannot delete this user';
-    return { status: 403, body: { error: message } };
-  }
-
-  if (existing.role === 'SUPER_ADMIN' && (await countOtherSuperAdmins(targetId)) === 0) {
-    return { status: 400, body: { error: 'Cannot delete the last super admin' } };
-  }
-
-  await db.query('DELETE FROM users WHERE id = $1', [targetId]);
-  return { status: 200, body: { message: 'User deleted' } };
+async function deactivateAdminUser(actor, targetId) {
+  return deactivateUser(actor, targetId);
 }
 
 async function verifyAdminUserEmail(actor, targetId) {
@@ -817,6 +805,16 @@ async function tryHandle(method, path, query, authHeader, body = null) {
       }
       return verifyAdminUserEmail(auth.user, verifyTargetId);
     }
+
+    const reactivateTargetId = parseAdminUserReactivatePath(path);
+    if (reactivateTargetId) {
+      const auth = await requireUser(authHeader);
+      if (auth.error) return auth.error;
+      if (!isStaff(auth.user.role)) {
+        return { status: 403, body: { error: 'Admin access required' } };
+      }
+      return reactivateUser(auth.user, reactivateTargetId);
+    }
   }
 
   if (method === 'PUT' || method === 'DELETE') {
@@ -831,7 +829,7 @@ async function tryHandle(method, path, query, authHeader, body = null) {
         if (!body) return { status: 400, body: { error: 'Request body required' } };
         return updateAdminUser(auth.user, targetId, body);
       }
-      return deleteAdminUser(auth.user, targetId);
+      return deactivateAdminUser(auth.user, targetId);
     }
   }
 
@@ -946,6 +944,11 @@ function adminUsersListPath(path) {
 
 function parseAdminUserVerifyPath(path) {
   const m = path.match(/\/admin\/users\/([^/]+)\/verify-email\/?$/);
+  return m ? m[1] : null;
+}
+
+function parseAdminUserReactivatePath(path) {
+  const m = path.match(/\/admin\/users\/([^/]+)\/reactivate\/?$/);
   return m ? m[1] : null;
 }
 

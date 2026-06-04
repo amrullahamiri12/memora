@@ -153,6 +153,15 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
+router.post('/close-account', authMiddleware, async (req, res) => {
+  try {
+    send(res, await fastAuth.closeUserAccount(req.user.id, req.body.password));
+  } catch (err) {
+    console.error('Close account error:', err);
+    res.status(500).json({ error: 'Failed to close account' });
+  }
+});
+
 router.post(
   '/change-password',
   authMiddleware,

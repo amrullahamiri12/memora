@@ -39,6 +39,7 @@ export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 1 });
   const [page, setPage] = useState(1);
+  const [includeInactive, setIncludeInactive] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -52,7 +53,8 @@ export default function AdminUsers() {
 
   const loadUsers = (targetPage = page) => {
     setLoading(true);
-    api(`/admin/users?page=${targetPage}&limit=${PAGE_SIZE}`)
+    const inactiveParam = includeInactive ? '&includeInactive=1' : '';
+    api(`/admin/users?page=${targetPage}&limit=${PAGE_SIZE}${inactiveParam}`)
       .then((data) => {
         setUsers(data.items);
         setPagination(data.pagination);
@@ -64,7 +66,7 @@ export default function AdminUsers() {
 
   useEffect(() => {
     loadUsers(page);
-  }, [page]);
+  }, [page, includeInactive]);
 
   useEffect(() => {
     if (!showForm || editingId) return;
@@ -117,16 +119,20 @@ export default function AdminUsers() {
     }
   };
 
-  const handleDelete = async (user) => {
+  const handleDeactivate = async (user) => {
     if (!canDeleteUser(currentUser, user)) {
       setError(
         user.id === currentUser?.id
-          ? 'You cannot delete your own account while logged in'
-          : 'You cannot delete this user'
+          ? 'Use Account settings to close your own account'
+          : 'You cannot deactivate this user'
       );
       return;
     }
-    if (!confirm(`Delete user "${user.name}" (${user.email})? Their progress will be removed.`)) {
+    if (
+      !confirm(
+        `Deactivate "${user.name}" (${user.email})? They will not be able to sign in. Progress is kept and a super admin can reactivate them.`
+      )
+    ) {
       return;
     }
     try {
@@ -134,6 +140,19 @@ export default function AdminUsers() {
       const nextPage = users.length === 1 && page > 1 ? page - 1 : page;
       if (nextPage !== page) setPage(nextPage);
       else loadUsers(page);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleReactivate = async (user) => {
+    if (!actorIsSuperAdmin) return;
+    if (!confirm(`Reactivate "${user.name}" (${user.email})? They can sign in again.`)) {
+      return;
+    }
+    try {
+      await api(`/admin/users/${user.id}/reactivate`, { method: 'POST' });
+      loadUsers(page);
     } catch (err) {
       setError(err.message);
     }
@@ -185,13 +204,35 @@ export default function AdminUsers() {
   const lockRoleOnSelf =
     editingSelf && (currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN');
 
+  const activeCount = users.filter((u) => u.active !== false).length;
+
   return (
     <Layout>
       <PageHeader
         title="Users"
-        subtitle={`${pagination.total} registered users`}
+        subtitle={
+          includeInactive
+            ? `${pagination.total} users (${activeCount} active on this page)`
+            : `${pagination.total} active users`
+        }
         action={!showForm && <Button onClick={handleAdd}>+ Add user</Button>}
       />
+
+      <div className="mb-4 flex items-center gap-2">
+        <input
+          id="include-inactive"
+          type="checkbox"
+          checked={includeInactive}
+          onChange={(e) => {
+            setIncludeInactive(e.target.checked);
+            setPage(1);
+          }}
+          className="h-4 w-4 rounded border-[var(--border)]"
+        />
+        <label htmlFor="include-inactive" className="text-sm text-[var(--text-muted)]">
+          Show deactivated users
+        </label>
+      </div>
 
       {error && <Alert>{error}</Alert>}
 
@@ -286,6 +327,7 @@ export default function AdminUsers() {
                 <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Name</th>
                 <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Email</th>
                 <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Role</th>
+                <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Status</th>
                 <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Verified</th>
                 <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Joined</th>
                 <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Actions</th>
@@ -294,12 +336,13 @@ export default function AdminUsers() {
             <tbody>
               {users.map((user, i) => {
                 const allowEdit = canEditUser(currentUser, user);
-                const allowDelete = canDeleteUser(currentUser, user);
+                const allowDeactivate = canDeleteUser(currentUser, user) && user.active !== false;
+                const inactive = user.active === false;
 
                 return (
                   <tr
                     key={user.id}
-                    className={`border-b border-[var(--border)] transition hover:bg-[var(--surface-hover)] ${i % 2 === 1 ? 'bg-[var(--surface)]/50' : ''}`}
+                    className={`border-b border-[var(--border)] transition hover:bg-[var(--surface-hover)] ${i % 2 === 1 ? 'bg-[var(--surface)]/50' : ''} ${inactive ? 'opacity-70' : ''}`}
                   >
                     <td className="px-4 py-3 font-medium text-[var(--text-heading)]">
                       {user.name}
@@ -318,6 +361,15 @@ export default function AdminUsers() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
+                      {inactive ? (
+                        <span className="text-xs font-medium text-[var(--text-muted)]">
+                          Deactivated
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium text-[var(--accent)]">Active</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       {user.emailVerified ? (
                         <span className="text-xs font-medium text-[var(--accent)]">Yes</span>
                       ) : (
@@ -331,7 +383,7 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-3">
-                        {actorIsSuperAdmin && !user.emailVerified && user.role === 'USER' && (
+                        {actorIsSuperAdmin && !user.emailVerified && user.role === 'USER' && !inactive && (
                           <button
                             type="button"
                             onClick={() => handleVerifyEmail(user)}
@@ -340,7 +392,7 @@ export default function AdminUsers() {
                             Verify email
                           </button>
                         )}
-                        {allowEdit ? (
+                        {allowEdit && !inactive ? (
                           <button
                             type="button"
                             onClick={() => handleEdit(user)}
@@ -351,13 +403,21 @@ export default function AdminUsers() {
                         ) : (
                           <span className="text-[var(--text-muted)]">—</span>
                         )}
-                        {allowDelete ? (
+                        {inactive && actorIsSuperAdmin ? (
                           <button
                             type="button"
-                            onClick={() => handleDelete(user)}
+                            onClick={() => handleReactivate(user)}
+                            className="font-medium text-[var(--accent)] hover:underline"
+                          >
+                            Reactivate
+                          </button>
+                        ) : allowDeactivate ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDeactivate(user)}
                             className="font-medium text-[var(--danger)] hover:underline"
                           >
-                            Delete
+                            Deactivate
                           </button>
                         ) : (
                           <span className="text-xs text-[var(--text-muted)]" title="Not permitted">

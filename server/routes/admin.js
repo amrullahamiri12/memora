@@ -18,10 +18,11 @@ const {
   isSuperAdmin,
   canAssignRole,
   canEditUser,
-  canDeleteUser,
   assertRoleChangeAllowed,
 } = require('../lib/roles');
 const { enrollUserInSubjects } = require('../lib/userSubjects');
+const { deactivateUser, reactivateUser } = require('../lib/userLifecycle');
+const { isGuestEmail } = require('../lib/guestIdentity');
 const authMiddleware = require('../middleware/auth');
 const adminMiddleware = require('../middleware/admin');
 const validate = require('../middleware/validate');
@@ -97,12 +98,28 @@ const userSelect = {
   email: true,
   role: true,
   createdAt: true,
+  emailVerifiedAt: true,
+  deactivatedAt: true,
 };
+
+function formatAdminUser(user) {
+  const staff = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    createdAt: user.createdAt,
+    emailVerified: staff || Boolean(user.emailVerifiedAt) || isGuestEmail(user.email),
+    active: !user.deactivatedAt,
+  };
+}
 
 async function countSuperAdmins(excludeUserId) {
   return prisma.user.count({
     where: {
       role: 'SUPER_ADMIN',
+      deactivatedAt: null,
       ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
     },
   });
@@ -119,16 +136,23 @@ const userValidators = [
 router.get('/users', async (req, res) => {
   try {
     const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 15 });
+    const includeInactive =
+      req.query.includeInactive === 'true' || req.query.includeInactive === '1';
+    const where = {
+      NOT: { email: { endsWith: '@guest.memora.local' } },
+      ...(includeInactive ? {} : { deactivatedAt: null }),
+    };
     const [total, users] = await Promise.all([
-      prisma.user.count(),
+      prisma.user.count({ where }),
       prisma.user.findMany({
+        where,
         select: userSelect,
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
       }),
     ]);
-    res.json(paginatedResponse(users, total, { page, limit }));
+    res.json(paginatedResponse(users.map(formatAdminUser), total, { page, limit }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch users' });
@@ -159,7 +183,7 @@ router.post(
 
       const passwordHash = await bcrypt.hash(password, 10);
       const user = await prisma.user.create({
-        data: { name, email, passwordHash, role },
+        data: { name, email, passwordHash, emailVerifiedAt: new Date(), role },
         select: userSelect,
       });
 
@@ -167,7 +191,7 @@ router.post(
         await enrollUserInSubjects(user.id, req.body.subjectIds);
       }
 
-      res.status(201).json(user);
+      res.status(201).json(formatAdminUser(user));
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Failed to create user' });
@@ -229,7 +253,7 @@ router.put(
         select: userSelect,
       });
 
-      res.json(user);
+      res.json(formatAdminUser(user));
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Failed to update user' });
@@ -239,33 +263,21 @@ router.put(
 
 router.delete('/users/:id', async (req, res) => {
   try {
-    const targetId = req.params.id;
-
-    const existing = await prisma.user.findUnique({ where: { id: targetId } });
-    if (!existing) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    if (!canDeleteUser(req.user, existing)) {
-      const message =
-        targetId === req.user.id
-          ? 'You cannot delete your own account while logged in'
-          : 'You cannot delete this user';
-      return res.status(403).json({ error: message });
-    }
-
-    if (existing.role === 'SUPER_ADMIN') {
-      const otherSuperAdmins = await countSuperAdmins(targetId);
-      if (otherSuperAdmins === 0) {
-        return res.status(400).json({ error: 'Cannot delete the last super admin' });
-      }
-    }
-
-    await prisma.user.delete({ where: { id: targetId } });
-    res.json({ message: 'User deleted' });
+    const result = await deactivateUser(req.user, req.params.id);
+    res.status(result.status).json(result.body);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to delete user' });
+    res.status(500).json({ error: 'Failed to deactivate user' });
+  }
+});
+
+router.post('/users/:id/reactivate', async (req, res) => {
+  try {
+    const result = await reactivateUser(req.user, req.params.id);
+    res.status(result.status).json(result.body);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reactivate user' });
   }
 });
 

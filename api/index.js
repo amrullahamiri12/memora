@@ -192,6 +192,22 @@ module.exports = async (req, res) => {
       return json(res, result.status, result.body);
     }
 
+    if (req.method === 'POST' && match(p, '/auth/close-account')) {
+      const h = req.headers.authorization || req.headers.Authorization || '';
+      if (!h.startsWith('Bearer ')) {
+        return json(res, 401, { error: 'Authentication required' });
+      }
+      const payload = require('jsonwebtoken').verify(h.slice(7), process.env.JWT_SECRET, {
+        algorithms: ['HS256'],
+      });
+      const body = await parseBody(req);
+      const result = await require('../server/lib/fastAuth').closeUserAccount(
+        payload.userId,
+        body.password
+      );
+      return json(res, result.status, result.body);
+    }
+
     if (req.method === 'GET' && match(p, '/subjects/catalog')) {
       const rows = await require('../server/lib/fastAuth').catalog();
       return json(res, 200, rows);

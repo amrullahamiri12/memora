@@ -15,7 +15,10 @@ const {
   publicUser,
   authSuccess,
   authCreated,
+  deactivatedAccountResponse,
+  isUserActive,
 } = require('./authUser');
+const { closeAccount } = require('./userLifecycle');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -53,6 +56,9 @@ async function login(email, password) {
   if (!user) {
     return { status: 401, body: { error: 'Invalid email or password' } };
   }
+  if (user.deactivatedAt) {
+    return deactivatedAccountResponse();
+  }
   if (!user.passwordHash) {
     if (user.googleId) {
       return { status: 401, body: { error: 'This account uses Google sign-in' } };
@@ -80,8 +86,20 @@ async function register({ name, email, password, subjectIds }) {
     return { status: 400, body: { error: 'Select at least one subject to practice' } };
   }
 
-  const existing = await db.query(`SELECT id FROM users WHERE email = $1`, [trimmedEmail]);
-  if (existing.rows[0]) return { status: 409, body: { error: 'Email already registered' } };
+  const existing = await findUserByEmail(trimmedEmail);
+  if (existing) {
+    if (existing.deactivatedAt) {
+      return {
+        status: 409,
+        body: {
+          error:
+            'An account with this email was closed. Contact support to reactivate it, or use a different email.',
+          code: 'ACCOUNT_DEACTIVATED',
+        },
+      };
+    }
+    return { status: 409, body: { error: 'Email already registered' } };
+  }
 
   const subjects = await db.query(`SELECT id FROM subjects WHERE id = ANY($1::text[])`, [ids]);
   if (subjects.rows.length === 0) {
@@ -297,11 +315,17 @@ async function loginWithGoogle({ credential, subjectIds }) {
     [profile.googleId]
   );
   if (byGoogle.rows[0]) {
+    if (!isUserActive(byGoogle.rows[0])) {
+      return deactivatedAccountResponse();
+    }
     return authSuccess(byGoogle.rows[0]);
   }
 
   const byEmail = await findUserByEmail(profile.email);
   if (byEmail) {
+    if (!isUserActive(byEmail)) {
+      return deactivatedAccountResponse();
+    }
     if (isGuestEmail(byEmail.email)) {
       return { status: 409, body: { error: 'Use guest upgrade or a different Google account' } };
     }
@@ -358,7 +382,12 @@ async function loginWithGoogle({ credential, subjectIds }) {
 async function me(userId) {
   const user = await findUserById(userId);
   if (!user) return { status: 401, body: { error: 'User not found' } };
+  if (!isUserActive(user)) return deactivatedAccountResponse();
   return { status: 200, body: { user: publicUser(user) } };
+}
+
+async function closeUserAccount(userId, password) {
+  return closeAccount(userId, password);
 }
 
 function authConfig() {
@@ -392,6 +421,7 @@ module.exports = {
   resetPassword,
   loginWithGoogle,
   me,
+  closeUserAccount,
   authConfig,
   catalog,
   createGuest,

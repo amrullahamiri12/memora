@@ -3,7 +3,8 @@ const { isGuestEmail } = require('./guestIdentity');
 const USER_PUBLIC_COLUMNS = `id, name, email, role,
   password_hash AS "passwordHash",
   google_id AS "googleId",
-  email_verified_at AS "emailVerifiedAt"`;
+  email_verified_at AS "emailVerifiedAt",
+  deactivated_at AS "deactivatedAt"`;
 
 function isStaffRole(role) {
   return role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -21,6 +22,20 @@ function withGuestFlag(user) {
   return { ...user, isGuest: isGuestEmail(user.email) };
 }
 
+function isUserActive(row) {
+  return row && !row.deactivatedAt;
+}
+
+function deactivatedAccountResponse() {
+  return {
+    status: 403,
+    body: {
+      error: 'This account has been closed',
+      code: 'ACCOUNT_DEACTIVATED',
+    },
+  };
+}
+
 function publicUser(row) {
   if (!row) return row;
   return withGuestFlag({
@@ -31,6 +46,7 @@ function publicUser(row) {
     emailVerified: isEmailVerified(row),
     hasPassword: Boolean(row.passwordHash),
     hasGoogle: Boolean(row.googleId),
+    active: isUserActive(row),
   });
 }
 
@@ -71,6 +87,8 @@ module.exports = {
   USER_PUBLIC_COLUMNS,
   isStaffRole,
   isEmailVerified,
+  isUserActive,
+  deactivatedAccountResponse,
   withGuestFlag,
   publicUser,
   issueJwt,
