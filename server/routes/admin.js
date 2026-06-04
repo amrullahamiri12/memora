@@ -21,6 +21,7 @@ const {
   canDeleteUser,
   assertRoleChangeAllowed,
 } = require('../lib/roles');
+const { enrollUserInSubjects } = require('../lib/userSubjects');
 const authMiddleware = require('../middleware/auth');
 const adminMiddleware = require('../middleware/admin');
 const validate = require('../middleware/validate');
@@ -161,6 +162,10 @@ router.post(
         data: { name, email, passwordHash, role },
         select: userSelect,
       });
+
+      if (role === 'USER' && Array.isArray(req.body.subjectIds) && req.body.subjectIds.length > 0) {
+        await enrollUserInSubjects(user.id, req.body.subjectIds);
+      }
 
       res.status(201).json(user);
     } catch (err) {

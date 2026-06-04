@@ -263,7 +263,105 @@ async function createAdminUser(actor, body) {
      RETURNING id, name, email, role, created_at AS "createdAt"`,
     [userId, name, email, passwordHash, role]
   );
+
+  if (role === 'USER' && Array.isArray(body.subjectIds) && body.subjectIds.length > 0) {
+    await enrollUserInSubjectsFast(userId, body.subjectIds);
+  }
+
   return { status: 201, body: rows[0] };
+}
+
+async function enrollUserInSubjectsFast(userId, subjectIds) {
+  const ids = [...new Set(subjectIds.filter((id) => typeof id === 'string' && id.trim()))];
+  if (ids.length === 0) return 0;
+
+  const validRes = await db.query('SELECT id FROM subjects WHERE id = ANY($1::text[])', [ids]);
+  const validIds = validRes.rows.map((r) => r.id);
+  for (const subjectId of validIds) {
+    await db.query(
+      `INSERT INTO user_subjects (id, user_id, subject_id, created_at)
+       VALUES ($1, $2, $3, NOW()) ON CONFLICT (user_id, subject_id) DO NOTHING`,
+      [randomUUID(), userId, subjectId]
+    );
+  }
+  return validIds.length;
+}
+
+async function subjectsAvailable(user) {
+  if (isStaff(user.role)) {
+    return { status: 200, body: [] };
+  }
+
+  const enrolledRes = await db.query(
+    'SELECT subject_id FROM user_subjects WHERE user_id = $1',
+    [user.id]
+  );
+  const enrolledIds = enrolledRes.rows.map((r) => r.subject_id);
+
+  const subjectsRes =
+    enrolledIds.length > 0
+      ? await db.query(
+          `SELECT s.id, s.name,
+                  (SELECT COUNT(*)::int FROM topics t WHERE t.subject_id = s.id) AS topic_count
+           FROM subjects s
+           WHERE s.id <> ALL($1::text[])
+           ORDER BY s.name ASC`,
+          [enrolledIds]
+        )
+      : await db.query(
+          `SELECT s.id, s.name,
+                  (SELECT COUNT(*)::int FROM topics t WHERE t.subject_id = s.id) AS topic_count
+           FROM subjects s ORDER BY s.name ASC`
+        );
+
+  if (subjectsRes.rows.length === 0) {
+    return { status: 200, body: [] };
+  }
+
+  const ids = subjectsRes.rows.map((s) => s.id);
+  const cardsRes = await db.query(
+    `SELECT t.subject_id, COUNT(f.id)::int AS cards
+     FROM flashcards f JOIN topics t ON f.topic_id = t.id
+     WHERE t.subject_id = ANY($1::text[])
+     GROUP BY t.subject_id`,
+    [ids]
+  );
+  const cardsBySubject = new Map(cardsRes.rows.map((r) => [r.subject_id, r.cards]));
+
+  return {
+    status: 200,
+    body: subjectsRes.rows.map((s) => ({
+      id: s.id,
+      name: s.name,
+      topicCount: s.topic_count,
+      totalCards: cardsBySubject.get(s.id) || 0,
+    })),
+  };
+}
+
+async function subjectsEnroll(user, body) {
+  if (isStaff(user.role)) {
+    return { status: 400, body: { error: 'Staff accounts have access to all subjects' } };
+  }
+
+  const ids = (body?.subjectIds || []).filter((id) => typeof id === 'string' && id.trim());
+  if (ids.length === 0) {
+    return { status: 400, body: { error: 'Select at least one subject' } };
+  }
+
+  const added = await enrollUserInSubjectsFast(user.id, ids);
+  if (added === 0) {
+    return { status: 400, body: { error: 'No valid subjects selected' } };
+  }
+
+  const dash = await dashboardSubjects(user);
+  return {
+    status: 200,
+    body: {
+      message: `Added ${added} subject(s)`,
+      subjects: dash.body,
+    },
+  };
 }
 
 async function deleteAdminUser(actor, targetId) {
@@ -701,6 +799,13 @@ async function tryHandle(method, path, query, authHeader, body = null) {
     return createAdminUser(auth.user, body);
   }
 
+  if (method === 'POST' && subjectsEnrollPath(path)) {
+    const auth = await requireUser(authHeader);
+    if (auth.error) return auth.error;
+    if (!body) return { status: 400, body: { error: 'Request body required' } };
+    return subjectsEnroll(auth.user, body);
+  }
+
   if (method !== 'GET') return null;
 
   const needsAuth =
@@ -751,11 +856,25 @@ async function tryHandle(method, path, query, authHeader, body = null) {
     return dashboardSubjects(user);
   }
 
+  if (subjectsAvailablePath(path)) {
+    return subjectsAvailable(user);
+  }
+
   if (match(path, '/profile')) {
     return profile(user, query);
   }
 
   return null;
+}
+
+function subjectsAvailablePath(path) {
+  const normalized = path.replace(/\/$/, '');
+  return normalized === '/subjects/available' || normalized === '/api/subjects/available';
+}
+
+function subjectsEnrollPath(path) {
+  const normalized = path.replace(/\/$/, '');
+  return normalized === '/subjects/enroll' || normalized === '/api/subjects/enroll';
 }
 
 function match(path, suffix) {

@@ -9,6 +9,7 @@ import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Pagination from '../../components/ui/Pagination';
+import SubjectPicker from '../../components/SubjectPicker';
 import { api } from '../../utils/api';
 
 const PAGE_SIZE = 15;
@@ -24,6 +25,7 @@ const emptyForm = {
   email: '',
   password: '',
   role: 'USER',
+  subjectIds: [],
 };
 
 function roleBadgeClass(role) {
@@ -43,6 +45,8 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [catalogSubjects, setCatalogSubjects] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
 
   const actorIsSuperAdmin = isSuperAdmin(currentUser?.role);
 
@@ -61,6 +65,15 @@ export default function AdminUsers() {
   useEffect(() => {
     loadUsers(page);
   }, [page]);
+
+  useEffect(() => {
+    if (!showForm || editingId) return;
+    setCatalogLoading(true);
+    api('/subjects/catalog')
+      .then(setCatalogSubjects)
+      .catch(() => setCatalogSubjects([]))
+      .finally(() => setCatalogLoading(false));
+  }, [showForm, editingId]);
 
   const handleAdd = () => {
     setForm(emptyForm);
@@ -137,9 +150,13 @@ export default function AdminUsers() {
         if (!form.password.trim()) {
           throw new Error('Password is required for new users');
         }
+        const createPayload = { ...payload, password: form.password };
+        if (form.role === 'USER' && form.subjectIds.length > 0) {
+          createPayload.subjectIds = form.subjectIds;
+        }
         await api('/admin/users', {
           method: 'POST',
-          body: JSON.stringify({ ...payload, password: form.password }),
+          body: JSON.stringify(createPayload),
         });
       }
       handleCancel();
@@ -216,6 +233,23 @@ export default function AdminUsers() {
               <p className="mt-3 text-sm text-[var(--text-muted)]">
                 Only a super admin can create super admin accounts.
               </p>
+            )}
+            {!editingId && form.role === 'USER' && (
+              <div className="mt-6 border-t border-[var(--border)] pt-6">
+                <p className="mb-1 font-medium text-[var(--text-heading)]">Subjects to practice</p>
+                <p className="mb-3 text-sm text-[var(--text-muted)]">
+                  Optional — the user can also add subjects from their dashboard after login.
+                </p>
+                {catalogLoading ? (
+                  <p className="text-sm text-[var(--text-muted)]">Loading subjects…</p>
+                ) : (
+                  <SubjectPicker
+                    subjects={catalogSubjects}
+                    selectedIds={form.subjectIds}
+                    onChange={(subjectIds) => setForm({ ...form, subjectIds })}
+                  />
+                )}
+              </div>
             )}
             <div className="mt-4 flex gap-3">
               <Button type="submit" loading={saving}>

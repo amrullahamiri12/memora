@@ -5,6 +5,20 @@ import Alert from './ui/Alert';
 import SubjectPicker from './SubjectPicker';
 import { api } from '../utils/api';
 
+async function fetchAvailableSubjects() {
+  try {
+    return await api('/subjects/available');
+  } catch {
+    const catalog = await api('/subjects/catalog');
+    return catalog.map((s) => ({
+      id: s.id,
+      name: s.name,
+      topicCount: s.topicCount ?? 0,
+      totalCards: s.totalCards ?? 0,
+    }));
+  }
+}
+
 export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }) {
   const [available, setAvailable] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -15,9 +29,13 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
 
   const load = () => {
     setLoading(true);
-    api('/subjects/available')
+    setError('');
+    fetchAvailableSubjects()
       .then(setAvailable)
-      .catch((err) => setError(err.message))
+      .catch((err) => {
+        setError(err.message);
+        setAvailable([]);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -52,34 +70,64 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
     }
   };
 
+  const title = defaultExpanded ? 'Choose subjects to practice' : 'Add more subjects';
+
   if (loading) {
-    return null;
+    return (
+      <Card className="mb-8 p-5">
+        <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">Loading subjects…</p>
+      </Card>
+    );
+  }
+
+  if (error && available.length === 0) {
+    return (
+      <Card className="mb-8 p-5">
+        <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
+        <Alert className="mt-3">{error}</Alert>
+        <Button type="button" variant="secondary" className="mt-3" onClick={load}>
+          Retry
+        </Button>
+      </Card>
+    );
   }
 
   if (available.length === 0) {
-    return null;
+    return (
+      <Card className="mb-8 p-5">
+        <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">
+          No subjects are set up yet. Ask an admin to add subjects and flashcards.
+        </p>
+      </Card>
+    );
   }
 
   return (
     <Card className="mb-8 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-[var(--text-heading)]">Add more subjects</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
           <p className="text-sm text-[var(--text-muted)]">
-            Expand what you study — {available.length} available
+            {defaultExpanded
+              ? 'Select one or more subjects to get started'
+              : `Expand what you study — ${available.length} available`}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          className="text-sm"
-          onClick={() => setExpanded((e) => !e)}
-        >
-          {expanded ? 'Hide' : 'Browse subjects'}
-        </Button>
+        {!defaultExpanded && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="text-sm"
+            onClick={() => setExpanded((e) => !e)}
+          >
+            {expanded ? 'Hide' : 'Browse subjects'}
+          </Button>
+        )}
       </div>
 
-      {expanded && (
+      {(expanded || defaultExpanded) && (
         <div className="mt-5">
           {error && <Alert>{error}</Alert>}
           <SubjectPicker
@@ -95,7 +143,7 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
             disabled={selectedIds.length === 0}
             onClick={handleEnroll}
           >
-            Add selected subjects
+            {defaultExpanded ? 'Start practicing' : 'Add selected subjects'}
           </Button>
         </div>
       )}

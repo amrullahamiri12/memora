@@ -96,8 +96,8 @@ export default function Dashboard() {
       ) : subjects.length === 0 ? (
         <Card className="py-16 text-center">
           <p className="mb-2 text-[var(--text-heading)] font-medium">No subjects yet</p>
-          <p className="mb-6 text-sm text-[var(--text-muted)]">
-            Use &quot;Browse subjects&quot; above to add what you want to practice.
+          <p className="text-sm text-[var(--text-muted)]">
+            Pick subjects in the panel above to start practicing.
           </p>
         </Card>
       ) : (
