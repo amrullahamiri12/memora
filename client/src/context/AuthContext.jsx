@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api, getToken, setToken, removeToken } from '../utils/api';
 import { disableStudentView } from '../utils/studentView';
+import { clearGoogleSession } from '../utils/googleAuthSession';
 
 const AuthContext = createContext(null);
 
@@ -13,6 +14,7 @@ function applyAuthResponse(data) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [googleSessionNonce, setGoogleSessionNonce] = useState(0);
 
   const loadUser = useCallback(async () => {
     const token = getToken();
@@ -110,11 +112,13 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     disableStudentView();
+    clearGoogleSession(user?.email);
     removeToken();
     setUser(null);
-  };
+    setGoogleSessionNonce((n) => n + 1);
+  }, [user]);
 
   const closeAccount = async (password) => {
     const data = await api('/auth/close-account', {
@@ -142,6 +146,7 @@ export function AuthProvider({ children }) {
         loginWithGoogle,
         closeAccount,
         logout,
+        googleSessionNonce,
       }}
     >
       {children}

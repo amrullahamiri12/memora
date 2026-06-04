@@ -7,7 +7,7 @@ import Alert from './ui/Alert';
 
 export default function GoogleSignInButton({ onSuccess }) {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-  const { loginWithGoogle } = useAuth();
+  const { loginWithGoogle, googleSessionNonce } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState('');
 
@@ -42,11 +42,12 @@ export default function GoogleSignInButton({ onSuccess }) {
       )}
       <div className="flex justify-center">
         <GoogleLogin
+          key={googleSessionNonce}
           onSuccess={handleSuccess}
           onError={() => setError('Google sign-in was cancelled or failed')}
           theme="outline"
           size="large"
-          text="continue_with"
+          text="signin_with"
           shape="rectangular"
           width="320"
         />
