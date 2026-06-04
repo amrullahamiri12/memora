@@ -122,7 +122,19 @@ module.exports = async (req, res) => {
     if (req.method === 'POST' && match(p, '/auth/verify-email')) {
       if (!applyRateLimit(res, checkAuthRateLimit(req))) return;
       const body = await parseBody(req);
-      const result = await require('../server/lib/fastAuth').verifyEmail(body.token);
+      let userId;
+      const verifyAuth = authHeader;
+      if (verifyAuth?.startsWith('Bearer ')) {
+        try {
+          const payload = require('jsonwebtoken').verify(verifyAuth.slice(7), process.env.JWT_SECRET, {
+            algorithms: ['HS256'],
+          });
+          userId = payload.userId;
+        } catch {
+          /* optional auth */
+        }
+      }
+      const result = await require('../server/lib/fastAuth').verifyEmail(body.token, { userId });
       return json(res, result.status, result.body);
     }
 

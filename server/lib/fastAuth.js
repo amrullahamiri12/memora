@@ -123,11 +123,12 @@ async function register({ name, email, password, subjectIds }) {
   }
 }
 
-async function verifyEmail(token) {
+async function verifyEmail(token, { userId } = {}) {
   if (!token || typeof token !== 'string') {
     return { status: 400, body: { error: 'Verification token is required' } };
   }
-  const tokenHash = hashToken(token.trim());
+  const trimmed = token.trim();
+  const tokenHash = hashToken(trimmed);
   const { rows } = await db.query(
     `SELECT ${USER_PUBLIC_COLUMNS} FROM users
      WHERE verification_token_hash = $1
@@ -136,7 +137,35 @@ async function verifyEmail(token) {
     [tokenHash]
   );
   if (!rows[0]) {
-    return { status: 400, body: { error: 'Invalid or expired verification link' } };
+    if (userId) {
+      const current = await findUserById(userId);
+      if (current?.emailVerifiedAt) {
+        return authSuccess(current);
+      }
+    }
+
+    const expired = await db.query(
+      `SELECT id FROM users WHERE verification_token_hash = $1 LIMIT 1`,
+      [tokenHash]
+    );
+    if (expired.rows[0]) {
+      return {
+        status: 400,
+        body: {
+          error: 'This verification link has expired. Sign in and request a new verification email.',
+          code: 'VERIFICATION_EXPIRED',
+        },
+      };
+    }
+
+    return {
+      status: 400,
+      body: {
+        error:
+          'This link is invalid or was already used. Sign in and use the latest verification email, or request a new one.',
+        code: 'VERIFICATION_INVALID',
+      },
+    };
   }
 
   const { rows: updated } = await db.query(

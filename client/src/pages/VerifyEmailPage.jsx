@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../utils/api';
 import Layout from '../components/Layout';
@@ -19,6 +19,7 @@ export default function VerifyEmailPage() {
   const [verifying, setVerifying] = useState(false);
   const [emailConfigured, setEmailConfigured] = useState(location.state?.emailConfigured);
   const token = searchParams.get('token');
+  const verifyStartedRef = useRef(false);
 
   useEffect(() => {
     api('/auth/config')
@@ -36,18 +37,33 @@ export default function VerifyEmailPage() {
 
   useEffect(() => {
     if (!token) return;
+
+    const storageKey = `memora-verify-${token}`;
+    if (sessionStorage.getItem(storageKey) === 'done') {
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+    if (verifyStartedRef.current || sessionStorage.getItem(storageKey) === 'pending') {
+      return;
+    }
+    verifyStartedRef.current = true;
+    sessionStorage.setItem(storageKey, 'pending');
+
     let cancelled = false;
     setVerifying(true);
     setError('');
     verifyEmail(token)
       .then(() => {
-        if (!cancelled) {
-          setMessage('Email verified! You can start studying.');
-          navigate('/dashboard', { replace: true });
-        }
+        if (cancelled) return;
+        sessionStorage.setItem(storageKey, 'done');
+        setMessage('Email verified! You can start studying.');
+        navigate('/dashboard', { replace: true });
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message);
+        if (cancelled) return;
+        sessionStorage.removeItem(storageKey);
+        verifyStartedRef.current = false;
+        setError(err.message);
       })
       .finally(() => {
         if (!cancelled) setVerifying(false);
@@ -91,10 +107,18 @@ export default function VerifyEmailPage() {
             site owner adds Resend to production.
           </Alert>
         )}
+        {token && error && !verifying && user && (
+          <div className="mb-4">
+            <Button type="button" className="w-full" loading={loading} onClick={handleResend}>
+              Send a new verification link
+            </Button>
+          </div>
+        )}
         {!token && (
           <>
             <p className="mb-4 text-sm text-[var(--text-muted)]">
-              You need to verify your email before studying. Click the link in your email
+              You need to verify your email before studying. Use the link in your{' '}
+              <strong>most recent</strong> email
               {user ? ', or resend it below.' : '.'}
             </p>
             {user ? (
