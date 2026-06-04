@@ -5,7 +5,8 @@ const helmet = require('helmet');
 const { validateConfig } = require('./lib/config');
 const { authLimiter, progressLimiter } = require('./middleware/rateLimit');
 
-validateConfig();
+const configCheck = validateConfig();
+const configError = configCheck.ok ? null : configCheck.errors.join(' ');
 
 const authRoutes = require('./routes/auth');
 const subjectRoutes = require('./routes/subjects');
@@ -46,7 +47,17 @@ app.use(
 );
 app.use(express.json({ limit: '2mb' }));
 
+app.use('/api', (req, res, next) => {
+  if (configError && req.path !== '/health') {
+    return res.status(503).json({ error: configError });
+  }
+  next();
+});
+
 app.get('/api/health', async (_req, res) => {
+  if (configError) {
+    return res.status(503).json({ status: 'error', config: configError });
+  }
   try {
     await checkDatabaseConnection();
     res.json({ status: 'ok', database: 'connected' });

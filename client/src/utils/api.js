@@ -42,11 +42,24 @@ export async function api(path, options = {}) {
     );
   }
 
-  const data = await res.json().catch(() => ({}));
+  const text = await res.text();
+  let data = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      if (text.includes('FUNCTION_INVOCATION_FAILED')) {
+        throw new Error(
+          'The API failed to start. In Vercel, set DATABASE_URL (pooler, port 6543, ?pgbouncer=true), DIRECT_URL (port 5432), and JWT_SECRET (32+ characters), then redeploy.'
+        );
+      }
+    }
+  }
 
   if (!res.ok) {
     const message =
       data.error ||
+      data.config ||
       data.errors?.[0]?.msg ||
       (res.status === 403
         ? 'Server unreachable — on macOS, port 5000 is used by AirPlay. The API runs on port 5001.'

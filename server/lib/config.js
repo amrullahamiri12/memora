@@ -3,17 +3,21 @@ const DEFAULT_MAX_STUDY_CARDS = 500;
 const DEFAULT_MAX_CSV_BYTES = 2 * 1024 * 1024;
 
 function validateConfig() {
+  const errors = [];
+
   if (process.env.VERCEL) {
     const db = process.env.DATABASE_URL || '';
     if (!db || db.startsWith('file:')) {
-      throw new Error(
-        'Vercel requires PostgreSQL. Set DATABASE_URL to a Postgres connection string in Vercel → Settings → Environment Variables, and use provider = "postgresql" in server/prisma/schema.prisma.'
+      errors.push(
+        'Set DATABASE_URL to your Supabase pooler URL (port 6543, include ?pgbouncer=true) in Vercel → Settings → Environment Variables.'
       );
     }
     if (!process.env.DIRECT_URL) {
-      throw new Error('DIRECT_URL is required on Vercel (Supabase direct connection, port 5432).');
+      errors.push(
+        'Set DIRECT_URL to your Supabase direct URL (port 5432) in Vercel → Settings → Environment Variables.'
+      );
     }
-    if (!db.includes('pgbouncer=true') && db.includes(':6543')) {
+    if (db && !db.includes('pgbouncer=true') && db.includes(':6543')) {
       console.warn(
         'Warning: DATABASE_URL uses port 6543 but missing ?pgbouncer=true — add it for Supabase pooler + Prisma on Vercel.'
       );
@@ -22,15 +26,20 @@ function validateConfig() {
 
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error('JWT_SECRET environment variable is required');
-  }
-  if (secret.length < MIN_JWT_SECRET_LENGTH) {
-    const msg = `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters`;
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(msg);
+    errors.push('JWT_SECRET environment variable is required.');
+  } else if (secret.length < MIN_JWT_SECRET_LENGTH) {
+    const msg = `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters.`;
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+      errors.push(msg);
+    } else {
+      console.warn(`Warning: ${msg}`);
     }
-    console.warn(`Warning: ${msg}`);
   }
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+  return { ok: true, errors: [] };
 }
 
 function getMaxStudyCards() {
