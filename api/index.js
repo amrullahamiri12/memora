@@ -130,6 +130,42 @@ async function handleLogin(req, res) {
   }
 }
 
+async function handleSubjectsCatalog(res) {
+  try {
+    const { getSubjectsCatalog } = require('../server/lib/authServerless');
+    const subjects = await getSubjectsCatalog();
+    respondJson(res, 200, subjects);
+  } catch (err) {
+    console.error('Catalog error:', err);
+    respondJson(res, 500, {
+      error: 'Failed to fetch subjects',
+      details: err.message,
+    });
+  }
+}
+
+async function handleRegister(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const { registerUser } = require('../server/lib/authServerless');
+    const result = await registerUser({
+      name: body.name,
+      email: body.email,
+      password: body.password,
+      subjectIds: body.subjectIds,
+    });
+    respondJson(res, result.status, result.body);
+  } catch (err) {
+    console.error('Fast register error:', err);
+    const msg = err.message || 'Registration failed';
+    if (msg.includes('timeout') || err.code === 'ETIMEDOUT') {
+      respondJson(res, 503, { error: 'Database connection timed out', details: msg });
+      return;
+    }
+    respondJson(res, 500, { error: 'Registration failed', details: msg });
+  }
+}
+
 async function handleMe(req, res) {
   const authHeader = req.headers.authorization || req.headers.Authorization;
   if (!authHeader?.startsWith('Bearer ')) {
@@ -185,6 +221,16 @@ module.exports = (req, res) => {
 
   if (req.method === 'GET' && matchesPath(path, '/auth/me')) {
     handleMe(req, res);
+    return;
+  }
+
+  if (req.method === 'GET' && matchesPath(path, '/subjects/catalog')) {
+    handleSubjectsCatalog(res);
+    return;
+  }
+
+  if (req.method === 'POST' && matchesPath(path, '/auth/register')) {
+    handleRegister(req, res);
     return;
   }
 

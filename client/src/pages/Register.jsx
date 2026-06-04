@@ -99,7 +99,7 @@ export default function Register() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 6 characters"
+              placeholder="At least 8 characters"
             />
 
             <div>
@@ -108,6 +108,15 @@ export default function Register() {
               </p>
               {catalogLoading ? (
                 <p className="text-sm text-[var(--text-muted)]">Loading subjects…</p>
+              ) : catalog.length === 0 ? (
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  No subjects in the database yet. Run{' '}
+                  <code className="rounded bg-black/5 px-1 dark:bg-white/10">npm run db:seed</code>{' '}
+                  in the server folder (with your Supabase URLs in{' '}
+                  <code className="rounded bg-black/5 px-1 dark:bg-white/10">server/.env</code>), or
+                  set <code className="rounded bg-black/5 px-1 dark:bg-white/10">SEED_ON_BUILD=true</code>{' '}
+                  on Vercel and redeploy once.
+                </p>
               ) : (
                 <SubjectPicker
                   subjects={catalog}
