@@ -17,25 +17,37 @@ export function AuthProvider({ children }) {
   const [googleSessionNonce, setGoogleSessionNonce] = useState(0);
 
   const loadUser = useCallback(async () => {
-    const token = getToken();
-    if (!token) {
+    const tokenAtStart = getToken();
+    if (!tokenAtStart) {
       setLoading(false);
       return;
     }
 
     try {
       const data = await api('/auth/me');
-      setUser(data.user);
+      // Ignore stale response if user signed in/out while this request was in flight
+      if (getToken() === tokenAtStart) {
+        setUser(data.user);
+      }
     } catch {
-      removeToken();
-      setUser(null);
+      if (getToken() === tokenAtStart) {
+        removeToken();
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadUser();
+    let cancelled = false;
+    (async () => {
+      await loadUser();
+      if (cancelled) return;
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadUser]);
 
   const login = async (email, password) => {
@@ -116,14 +128,11 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     disableStudentView();
-    await clearGoogleSession({
-      memoraEmail: user?.email,
-      hasGoogle: user?.hasGoogle,
-    });
+    await clearGoogleSession();
     removeToken();
     setUser(null);
     setGoogleSessionNonce((n) => n + 1);
-  }, [user]);
+  }, []);
 
   const closeAccount = async (password) => {
     const data = await api('/auth/close-account', {

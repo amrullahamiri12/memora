@@ -23,11 +23,15 @@ export default function GoogleSignInButton({ onSuccess }) {
         return;
       }
       const user = data.user;
+      if (isStaff(user.role)) {
+        navigate('/admin');
+        return;
+      }
       if (!user.emailVerified && !user.isGuest) {
         navigate('/verify-email');
         return;
       }
-      navigate(isStaff(user.role) ? '/admin' : '/dashboard');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.message);
     }

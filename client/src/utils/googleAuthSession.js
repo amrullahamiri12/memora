@@ -11,19 +11,15 @@ function getGoogleAccounts() {
 }
 
 /**
- * Clear Google Identity Services state for Memora's OAuth client.
- * Revokes every known Google email hint (last Google sign-in + linked Memora email).
+ * Memora logout: discourage GIS auto sign-in. Do not call revoke() here —
+ * it runs asynchronously and can break an immediate Google sign-in after logout.
  */
-export function clearGoogleSession({ memoraEmail, hasGoogle } = {}) {
-  const hints = new Set();
-  const lastGoogle = sessionStorage.getItem(LAST_GOOGLE_EMAIL_KEY);
-  if (lastGoogle) hints.add(lastGoogle);
-  if (hasGoogle && memoraEmail) hints.add(memoraEmail.trim().toLowerCase());
+export function clearGoogleSession() {
   sessionStorage.removeItem(LAST_GOOGLE_EMAIL_KEY);
 
   const run = () => {
     const googleAccounts = getGoogleAccounts();
-    if (!googleAccounts) return Promise.resolve();
+    if (!googleAccounts) return false;
 
     try {
       googleAccounts.cancel?.();
@@ -37,29 +33,14 @@ export function clearGoogleSession({ memoraEmail, hasGoogle } = {}) {
       /* ignore */
     }
 
-    const emails = [...hints];
-    if (emails.length === 0) return Promise.resolve();
-
-    return Promise.all(
-      emails.map(
-        (email) =>
-          new Promise((resolve) => {
-            try {
-              googleAccounts.revoke(email, () => resolve());
-            } catch {
-              resolve();
-            }
-          })
-      )
-    );
+    return true;
   };
 
-  return run().then(() => {
-    if (getGoogleAccounts()) return;
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        run().then(resolve);
-      }, 400);
-    });
+  if (run()) return Promise.resolve();
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      run();
+      resolve();
+    }, 400);
   });
 }
