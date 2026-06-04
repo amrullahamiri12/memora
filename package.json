@@ -7,6 +7,9 @@
     "build:vercel": "cd server && npx prisma generate && if [ -n \"$DATABASE_URL\" ]; then npx prisma db push --skip-generate; fi && if [ \"$SEED_ON_BUILD\" = \"true\" ]; then node -r dotenv/config prisma/seed.js; fi && cd ../client && npx vite build"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.16.0",
     "serverless-http": "^3.2.0"
   },
   "devDependencies": {

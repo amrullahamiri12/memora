@@ -55,15 +55,10 @@ app.use('/api', (req, res, next) => {
 
 app.get('/api/health', async (_req, res) => {
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await require('./lib/pg').query('SELECT 1');
     res.json({ status: 'ok', database: 'connected' });
   } catch (err) {
-    console.error('Health check DB error:', err);
-    res.status(500).json({
-      status: 'error',
-      database: 'disconnected',
-      hint: 'Use Supabase pooler DATABASE_URL (port 6543, ?pgbouncer=true).',
-    });
+    res.status(503).json({ status: 'error', database: 'disconnected' });
   }
 });
 
