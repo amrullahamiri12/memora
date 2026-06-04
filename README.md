@@ -211,11 +211,17 @@ flashcards/
 │   │   ├── migrations/
 │   │   └── seed.js
 │   └── routes/              # auth, subjects, topics, progress, profile, admin
+├── docs/
+│   └── openapi.yaml         # OpenAPI 3 spec (source of truth)
 ├── package.json             # Root scripts (setup, dev)
 └── README.md
 ```
 
 ## API Reference
+
+**Interactive docs (Swagger UI):** [`/api-docs.html`](/api-docs.html) when the app is running (e.g. [memora-phi.vercel.app/api-docs.html](https://memora-phi.vercel.app/api-docs.html)).
+
+**OpenAPI 3 spec:** [`docs/openapi.yaml`](docs/openapi.yaml) (also served at `/openapi.yaml` from the client build).
 
 Base URL: `http://localhost:5001/api` (or proxied via Vite as `/api`).
 

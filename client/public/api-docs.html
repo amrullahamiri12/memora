@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Memora API Docs</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css"
+    />
+    <style>
+      html {
+        box-sizing: border-box;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: inherit;
+      }
+      body {
+        margin: 0;
+        background: #fafafa;
+      }
+      .topbar {
+        display: none;
+      }
+      .docs-header {
+        padding: 1rem 1.5rem;
+        background: #0d4f4f;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+      }
+      .docs-header h1 {
+        margin: 0 0 0.25rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+      .docs-header p {
+        margin: 0;
+        font-size: 0.875rem;
+        opacity: 0.9;
+      }
+      .docs-header a {
+        color: #a8e6e0;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="docs-header">
+      <h1>Memora API</h1>
+      <p>
+        OpenAPI 3 spec ·
+        <a href="/openapi.yaml" download>Download YAML</a> ·
+        <a href="/">Back to app</a>
+      </p>
+    </header>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js"></script>
+    <script>
+      window.onload = () => {
+        window.ui = SwaggerUIBundle({
+          url: '/openapi.yaml',
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+          layout: 'StandaloneLayout',
+          persistAuthorization: true,
+          tryItOutEnabled: true,
+        });
+      };
+    </script>
+  </body>
+</html>

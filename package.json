@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "setup": "npm install --prefix server && npm install --prefix client && npm run db:migrate --prefix server && npm run db:seed --prefix server",
-    "build:vercel": "cd server && npx prisma generate && if [ -n \"$DATABASE_URL\" ]; then npx prisma db push --skip-generate; fi && if [ \"$SEED_ON_BUILD\" = \"true\" ]; then node -r dotenv/config prisma/seed.js; fi && cd ../client && npx vite build"
+    "sync:openapi": "cp docs/openapi.yaml client/public/openapi.yaml",
+    "build:vercel": "npm run sync:openapi && cd server && npx prisma generate && if [ -n \"$DATABASE_URL\" ]; then npx prisma db push --skip-generate; fi && if [ \"$SEED_ON_BUILD\" = \"true\" ]; then node -r dotenv/config prisma/seed.js; fi && cd ../client && npx vite build"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

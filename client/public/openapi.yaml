@@ -1,0 +1,967 @@
+openapi: 3.0.3
+info:
+  title: Memora API
+  description: |
+    REST API for the Memora flashcard study app.
+
+    **Base URL:** `/api` (same origin on Vercel, or `http://localhost:5001/api` in local dev).
+
+    **Auth:** Send `Authorization: Bearer <JWT>` on protected routes.
+
+    **Roles:** `USER`, `ADMIN`, `SUPER_ADMIN`. Staff (`ADMIN`, `SUPER_ADMIN`) see all subjects and can use admin routes.
+
+    **Vercel fast paths** (lightweight `pg`, avoid Express cold start): health, auth login/register/me, subjects catalog, GET subjects/profile, GET admin users/subjects/flashcards, POST flashcards import, POST/PUT/DELETE admin users. Other routes may load Express on first request.
+
+    Interactive docs: `/api-docs.html` · Raw spec: `/openapi.yaml`
+  version: 1.0.0
+  contact:
+    name: Memora
+servers:
+  - url: /api
+    description: Production / same-origin (Vercel or Vite proxy)
+  - url: http://localhost:5001/api
+    description: Local Express dev server
+
+tags:
+  - name: Health
+  - name: Auth
+  - name: Subjects
+  - name: Study
+  - name: Progress
+  - name: Profile
+  - name: Admin - Users
+  - name: Admin - Subjects & Topics
+  - name: Admin - Flashcards
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        role:
+          type: string
+          enum: [USER, ADMIN, SUPER_ADMIN]
+        createdAt: { type: string, format: date-time }
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user: { $ref: '#/components/schemas/User' }
+    MeResponse:
+      type: object
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+    Pagination:
+      type: object
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+    PaginatedUsers:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/User' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    SubjectCatalogItem:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        topicCount: { type: integer }
+    SubjectProgress:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        topicCount: { type: integer }
+        totalCards: { type: integer }
+        mastered: { type: integer }
+        progressPercent: { type: integer }
+    TopicProgress:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        mastered: { type: integer }
+        needsPractice: { type: integer }
+        totalReviewed: { type: integer }
+        totalCards: { type: integer }
+    SubjectTopics:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        topics:
+          type: array
+          items: { $ref: '#/components/schemas/TopicProgress' }
+        topicsPagination: { $ref: '#/components/schemas/Pagination' }
+    StudyFlashcard:
+      type: object
+      properties:
+        id: { type: string }
+        question: { type: string }
+        answer: { type: string }
+        difficulty:
+          type: string
+          enum: [EASY, MEDIUM, HARD]
+        questionType:
+          type: string
+          enum: [MCQ, TRUE_FALSE, FILL_BLANK]
+        options:
+          type: array
+          items: { type: string }
+          description: Present in learn/test modes (MCQ shuffled options)
+    StudyDeck:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        subject:
+          type: object
+          properties:
+            id: { type: string }
+            name: { type: string }
+        mode:
+          type: string
+          enum: [learn, test, flashcards]
+        totalAvailable: { type: integer }
+        flashcards:
+          type: array
+          items: { $ref: '#/components/schemas/StudyFlashcard' }
+        truncated: { type: boolean }
+        maxCards: { type: integer }
+    ProgressRequest:
+      type: object
+      properties:
+        flashcardId: { type: string }
+        status:
+          type: string
+          enum: [GOT_IT, NEEDS_PRACTICE]
+        selectedAnswer:
+          type: string
+          description: For graded learn/test; server sets status from correctness
+      required: [flashcardId]
+    ProgressResponse:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        flashcardId: { type: string }
+        status: { type: string, enum: [GOT_IT, NEEDS_PRACTICE] }
+        correct: { type: boolean, nullable: true }
+        correctAnswer: { type: string, nullable: true }
+        lastReviewed: { type: string, format: date-time }
+    ProfileResponse:
+      type: object
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        stats:
+          type: object
+          properties:
+            totalReviewed: { type: integer }
+            mastered: { type: integer }
+            needsPractice: { type: integer }
+            streak: { type: integer }
+            topicsStudied: { type: integer }
+        streakDays:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              practiced: { type: boolean }
+        topics:
+          type: array
+          items: { $ref: '#/components/schemas/TopicProgress' }
+        topicsPagination: { $ref: '#/components/schemas/Pagination' }
+    AdminFlashcard:
+      type: object
+      properties:
+        id: { type: string }
+        questionType: { type: string, enum: [MCQ, TRUE_FALSE, FILL_BLANK] }
+        question: { type: string }
+        answer: { type: string }
+        distractor1: { type: string, nullable: true }
+        distractor2: { type: string, nullable: true }
+        distractor3: { type: string, nullable: true }
+        difficulty: { type: string, enum: [EASY, MEDIUM, HARD] }
+        topicId: { type: string }
+        topicName: { type: string }
+        subjectId: { type: string }
+        subjectName: { type: string }
+    FlashcardWrite:
+      type: object
+      properties:
+        subject: { type: string }
+        topic: { type: string }
+        questionType: { type: string, enum: [MCQ, TRUE_FALSE, FILL_BLANK] }
+        question: { type: string }
+        answer: { type: string }
+        distractor1: { type: string }
+        distractor2: { type: string }
+        distractor3: { type: string }
+        difficulty: { type: string, enum: [EASY, MEDIUM, HARD] }
+      required: [subject, topic, question, answer, difficulty]
+    AdminSubject:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        topicCount: { type: integer }
+        cardCount: { type: integer }
+        topics:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              subjectId: { type: string }
+              cardCount: { type: integer }
+    CsvImportResult:
+      type: object
+      properties:
+        imported: { type: integer }
+        skipped: { type: integer }
+        errors:
+          type: array
+          items: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+    Message:
+      type: object
+      properties:
+        message: { type: string }
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: API and database OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  database: { type: string, example: connected }
+        '503':
+          description: Database unreachable
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, subjectIds]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                subjectIds:
+                  type: array
+                  minItems: 1
+                  items: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeResponse' }
+        '401':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change password
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword, confirmPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string, minLength: 8 }
+                confirmPassword: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+        '400':
+        '401':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /subjects/catalog:
+    get:
+      tags: [Subjects]
+      summary: Public subject list (registration)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SubjectCatalogItem' }
+
+  /subjects:
+    get:
+      tags: [Subjects]
+      summary: Enrolled subjects with progress
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SubjectProgress' }
+
+  /subjects/available:
+    get:
+      tags: [Subjects]
+      summary: Subjects not yet enrolled
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SubjectCatalogItem' }
+
+  /subjects/enroll:
+    post:
+      tags: [Subjects]
+      summary: Enroll in subjects
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subjectIds]
+              properties:
+                subjectIds:
+                  type: array
+                  minItems: 1
+                  items: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  subjects:
+                    type: array
+                    items: { $ref: '#/components/schemas/SubjectProgress' }
+        '400':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /subjects/{subjectId}/topics:
+    get:
+      tags: [Subjects]
+      summary: Topics for a subject
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: subjectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 12 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SubjectTopics' }
+        '403':
+        '404':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /topics/{topicId}/flashcards:
+    get:
+      tags: [Study]
+      summary: Study deck for a topic
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: topicId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: mode
+          in: query
+          schema:
+            type: string
+            enum: [learn, test, flashcards]
+            default: learn
+        - name: shuffle
+          in: query
+          schema: { type: boolean, default: true }
+          description: Set to false to disable shuffle
+        - name: weakOnly
+          in: query
+          schema: { type: boolean, default: false }
+        - name: types
+          in: query
+          schema: { type: string }
+          description: Comma-separated MCQ,TRUE_FALSE,FILL_BLANK
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StudyDeck' }
+        '403':
+        '404':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /progress:
+    post:
+      tags: [Progress]
+      summary: Save review / grade answer
+      description: Rate-limited (150 req/min per IP). Requires enrollment in the card's subject (or staff).
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProgressRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProgressResponse' }
+        '400':
+        '403':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /profile:
+    get:
+      tags: [Profile]
+      summary: Profile stats and topic breakdown
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfileResponse' }
+
+  /admin/users:
+    get:
+      tags: [Admin - Users]
+      summary: List users
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 15 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginatedUsers' }
+        '403':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    post:
+      tags: [Admin - Users]
+      summary: Create user
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, role]
+              properties:
+                name: { type: string }
+                email: { type: string }
+                password: { type: string, minLength: 8 }
+                role: { type: string, enum: [USER, ADMIN, SUPER_ADMIN] }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '403':
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/users/{userId}:
+    put:
+      tags: [Admin - Users]
+      summary: Update user
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, role]
+              properties:
+                name: { type: string }
+                email: { type: string }
+                role: { type: string, enum: [USER, ADMIN, SUPER_ADMIN] }
+                password: { type: string, minLength: 8 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400':
+        '403':
+        '404':
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Admin - Users]
+      summary: Delete user
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+        '400':
+        '403':
+        '404':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/subjects:
+    get:
+      tags: [Admin - Subjects & Topics]
+      summary: List subjects with topics
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminSubject' }
+    post:
+      tags: [Admin - Subjects & Topics]
+      summary: Create subject
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminSubject' }
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/subjects/{subjectId}:
+    put:
+      tags: [Admin - Subjects & Topics]
+      summary: Rename subject
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: subjectId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+        '404':
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Admin - Subjects & Topics]
+      summary: Delete subject (cascades topics and cards)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: subjectId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+        '404':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/topics:
+    post:
+      tags: [Admin - Subjects & Topics]
+      summary: Create topic
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subjectId, name]
+              properties:
+                subjectId: { type: string }
+                name: { type: string }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+                  subjectId: { type: string }
+                  cardCount: { type: integer }
+        '404':
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/topics/{topicId}:
+    put:
+      tags: [Admin - Subjects & Topics]
+      summary: Rename topic
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: topicId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+                  subjectId: { type: string }
+        '404':
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Admin - Subjects & Topics]
+      summary: Delete topic
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: topicId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+        '404':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/flashcards:
+    get:
+      tags: [Admin - Flashcards]
+      summary: List flashcards (paginated, searchable)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/AdminFlashcard' }
+                  pagination: { $ref: '#/components/schemas/Pagination' }
+    post:
+      tags: [Admin - Flashcards]
+      summary: Create flashcard
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FlashcardWrite' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminFlashcard' }
+        '400':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/flashcards/{flashcardId}:
+    put:
+      tags: [Admin - Flashcards]
+      summary: Update flashcard
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: flashcardId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FlashcardWrite' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminFlashcard' }
+        '400':
+        '404':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Admin - Flashcards]
+      summary: Delete flashcard
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: flashcardId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+        '404':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/flashcards/import:
+    post:
+      tags: [Admin - Flashcards]
+      summary: Import flashcards from CSV
+      description: Max 2MB CSV in JSON body. MCQ requires distractors; see template endpoint.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [csv]
+              properties:
+                csv: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CsvImportResult' }
+        '400':
+        '413':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/flashcards/import/template:
+    get:
+      tags: [Admin - Flashcards]
+      summary: Download CSV import template
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /admin/flashcards/export:
+    get:
+      tags: [Admin - Flashcards]
+      summary: Export all flashcards as CSV
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
