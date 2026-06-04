@@ -13,7 +13,7 @@ import GoogleSignInButton from '../components/GoogleSignInButton';
 import { isGuestUser } from '../utils/guest';
 
 function afterAuthPath(user) {
-  if (isStaff(user.role)) return '/admin/reports';
+  if (isStaff(user.role)) return '/admin/dashboard';
   if (isGuestUser(user)) return '/guest/setup';
   if (user.emailVerified === false) return '/verify-email';
   return '/dashboard';

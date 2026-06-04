@@ -22,7 +22,20 @@ import Input from '../../components/ui/Input';
 import { api } from '../../utils/api';
 import { defaultReportRange, buildReportQuery } from '../../utils/reportDates';
 
-export default function AdminReports() {
+const REPORT_LINKS = [
+  {
+    to: '/admin/reports/learners',
+    title: 'Learner engagement',
+    description: 'Streaks, mastery, last practice, and inactive learners. Export CSV.',
+  },
+  {
+    to: '/admin/reports/content',
+    title: 'Content health',
+    description: 'Enrollment vs usage and low-mastery topics across subjects.',
+  },
+];
+
+export default function AdminDashboard() {
   const [range, setRange] = useState(defaultReportRange);
   const [draftFrom, setDraftFrom] = useState(range.from);
   const [draftTo, setDraftTo] = useState(range.to);
@@ -54,19 +67,28 @@ export default function AdminReports() {
   return (
     <Layout>
       <PageHeader
-        title="Reports"
-        subtitle="Engagement, learners, and content health"
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Link to="/admin/reports/learners">
-              <Button variant="secondary">Learner engagement</Button>
-            </Link>
-            <Link to="/admin/reports/content">
-              <Button variant="secondary">Content health</Button>
-            </Link>
-          </div>
-        }
+        title="Dashboard"
+        subtitle="Overview of learners, activity, and growth"
       />
+
+      <Card className="mb-6">
+        <h2 className="mb-1 text-lg font-semibold text-[var(--text-heading)]">Reports</h2>
+        <p className="mb-4 text-sm text-[var(--text-muted)]">
+          Drill down into detailed tables beyond this overview.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {REPORT_LINKS.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 transition hover:border-[var(--accent)]/40 hover:bg-[var(--surface-hover)]"
+            >
+              <p className="font-semibold text-[var(--text-heading)]">{item.title}</p>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">{item.description}</p>
+            </Link>
+          ))}
+        </div>
+      </Card>
 
       <Card className="mb-6">
         <form onSubmit={applyRange} className="flex flex-wrap items-end gap-4">
@@ -170,7 +192,12 @@ export default function AdminReports() {
                       <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                       <Tooltip />
-                      <Bar dataKey="signups" name="Signups" fill="var(--accent-deep)" radius={[4, 4, 0, 0]} />
+                      <Bar
+                        dataKey="signups"
+                        name="Signups"
+                        fill="var(--accent-deep)"
+                        radius={[4, 4, 0, 0]}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 )}

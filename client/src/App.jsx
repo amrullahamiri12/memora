@@ -18,7 +18,7 @@ import AccountPage from './pages/AccountPage';
 import AdminFlashcards from './pages/admin/AdminFlashcards';
 import AdminSubjects from './pages/admin/AdminSubjects';
 import AdminUsers from './pages/admin/AdminUsers';
-import AdminReports from './pages/admin/AdminReports';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminReportsLearners from './pages/admin/AdminReportsLearners';
 import AdminReportsContent from './pages/admin/AdminReportsContent';
 import Landing from './pages/Landing';
@@ -42,7 +42,7 @@ function Home() {
   }
   if (!user) return <Landing />;
   if (isStaff(user.role) && !preview) {
-    return <Navigate to="/admin/reports" replace />;
+    return <Navigate to="/admin/dashboard" replace />;
   }
   if (isGuestUser(user)) {
     return <Navigate to="/guest/setup" replace />;
@@ -155,12 +155,16 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
-          <Route path="/admin" element={<Navigate to="/admin/reports" replace />} />
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
           <Route
             path="/admin/reports"
+            element={<Navigate to="/admin/dashboard" replace />}
+          />
+          <Route
+            path="/admin/dashboard"
             element={
               <AdminRoute>
-                <AdminReports />
+                <AdminDashboard />
               </AdminRoute>
             }
           />

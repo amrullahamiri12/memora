@@ -321,7 +321,7 @@ Query: `page`, `limit` (default 10 topics per page).
 
 Staff roles bypass subject enrollment and see all subjects.
 
-**Admin UI:** Staff land on **Reports** (`/admin/reports`) with KPIs and charts. **Learner engagement** and **Content health** are under `/admin/reports/learners` and `/admin/reports/content`. Flashcard CRUD moved to `/admin/cards` ( `/admin` redirects to reports).
+**Admin UI:** Staff land on **Dashboard** (`/admin/dashboard`) with KPIs and charts; detailed **Learner engagement** and **Content health** reports are linked from the dashboard (`/admin/reports/learners`, `/admin/reports/content`). Flashcard CRUD is at `/admin/cards`. `/admin` and `/admin/reports` redirect to the dashboard.
 
 ### Pagination
 

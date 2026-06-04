@@ -43,18 +43,15 @@ export default function Layout({ children }) {
 
   const exitStudentPreview = () => {
     disableStudentView();
-    navigate('/admin/reports');
+    navigate('/admin/dashboard');
   };
 
   const isActive = (path) => {
-    if (path === '/admin/reports') {
-      return (
-        location.pathname === '/admin/reports' ||
-        location.pathname.startsWith('/admin/reports/')
-      );
+    if (path === '/admin/dashboard') {
+      return location.pathname === '/admin/dashboard';
     }
     if (path === '/admin/cards') {
-      return location.pathname === '/admin/cards' || location.pathname === '/admin';
+      return location.pathname === '/admin/cards';
     }
     if (path === '/dashboard') return location.pathname === '/dashboard';
     return location.pathname.startsWith(path);
@@ -69,7 +66,7 @@ export default function Layout({ children }) {
     </Link>
   );
 
-  const logoTo = staff && !studentView ? '/admin/reports' : studentPath('/dashboard');
+  const logoTo = staff && !studentView ? '/admin/dashboard' : studentPath('/dashboard');
 
   return (
     <div className="min-h-screen">
@@ -85,7 +82,7 @@ export default function Layout({ children }) {
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {staff && !studentView ? (
                 <>
-                  {navLink('/admin/reports', 'Reports')}
+                  {navLink('/admin/dashboard', 'Dashboard')}
                   {navLink('/admin/cards', 'Cards')}
                   {navLink('/admin/subjects', 'Subjects')}
                   {navLink('/admin/users', 'Users')}

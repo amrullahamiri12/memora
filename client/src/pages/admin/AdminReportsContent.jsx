@@ -27,8 +27,8 @@ export default function AdminReportsContent() {
         title="Content health"
         subtitle="Enrollment, usage, and mastery by subject and topic"
         action={
-          <Link to="/admin/reports">
-            <Button variant="secondary">Back to reports</Button>
+          <Link to="/admin/dashboard">
+            <Button variant="secondary">Back to dashboard</Button>
           </Link>
         }
       />

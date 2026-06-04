@@ -26,7 +26,7 @@ export function StudentViewRoute({ children }) {
 
   useEffect(() => {
     if (!loading && user && isStaff(user.role) && !preview) {
-      navigate('/admin/reports', { replace: true });
+      navigate('/admin/dashboard', { replace: true });
     }
   }, [loading, user, preview, navigate]);
 
@@ -37,7 +37,7 @@ export function StudentViewRoute({ children }) {
   }
 
   if (isStaff(user.role) && !preview) {
-    return <Navigate to="/admin/reports" replace />;
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   if (!isGuestUser(user) && user.emailVerified === false) {
@@ -70,7 +70,7 @@ export function GuestRoute({ children }) {
 
   if (user) {
     let to = '/dashboard';
-    if (isStaff(user.role)) to = '/admin/reports';
+    if (isStaff(user.role)) to = '/admin/dashboard';
     else if (isGuestUser(user)) to = '/guest/setup';
     else if (user.emailVerified === false) to = '/verify-email';
     return <Navigate to={to} replace />;

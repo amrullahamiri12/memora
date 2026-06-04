@@ -24,7 +24,7 @@ export default function GoogleSignInButton({ onSuccess }) {
       }
       const user = data.user;
       if (isStaff(user.role)) {
-        navigate('/admin/reports');
+        navigate('/admin/dashboard');
         return;
       }
       if (!user.emailVerified && !user.isGuest) {
