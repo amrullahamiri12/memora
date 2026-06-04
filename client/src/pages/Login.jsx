@@ -6,7 +6,7 @@ import AuthPanel from '../components/AuthPanel';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
-import ThemeToggle from '../components/ThemeToggle';
+import AuthPageTopBar from '../components/AuthPageTopBar';
 import AuthFormHeader from '../components/AuthFormHeader';
 
 export default function Login() {
@@ -41,9 +41,7 @@ export default function Login() {
     <div className="flex min-h-screen bg-[var(--bg)]">
       <AuthPanel />
       <div className="auth-form-panel relative flex flex-1 flex-col justify-center px-6 py-12 sm:px-12">
-        <div className="absolute right-6 top-6">
-          <ThemeToggle />
-        </div>
+        <AuthPageTopBar />
         <div className="mx-auto w-full max-w-md page-enter">
           <AuthFormHeader
             title="Welcome back"
