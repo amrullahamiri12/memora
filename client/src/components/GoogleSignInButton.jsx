@@ -11,7 +11,18 @@ export default function GoogleSignInButton({ onSuccess }) {
   const navigate = useNavigate();
   const [error, setError] = useState('');
 
-  if (!clientId) return null;
+  if (!clientId) {
+    if (import.meta.env.DEV) {
+      return (
+        <p className="text-center text-xs text-[var(--text-muted)]">
+          Google sign-in is off: add <code className="text-[var(--text-heading)]">VITE_GOOGLE_CLIENT_ID</code>{' '}
+          to <code className="text-[var(--text-heading)]">client/.env</code> (not <code>server/.env</code>) and
+          restart Vite.
+        </p>
+      );
+    }
+    return null;
+  }
 
   const handleSuccess = async (credentialResponse) => {
     setError('');

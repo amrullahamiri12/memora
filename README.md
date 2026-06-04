@@ -103,7 +103,7 @@ CLIENT_URL="http://localhost:5173"
 | `GOOGLE_CLIENT_ID` | Server (Vercel) | Google OAuth 2.0 **Web** client ID |
 | `VITE_GOOGLE_CLIENT_ID` | Client build (Vercel) | Same Web client ID (required for Google button in UI) |
 
-Copy [`client/.env.example`](client/.env.example) to `client/.env` for local Google sign-in.
+Copy [`client/.env.example`](client/.env.example) to **`client/.env`** for local Google sign-in (`VITE_GOOGLE_CLIENT_ID`). The server uses `GOOGLE_CLIENT_ID` in **`server/.env`** — both must be the same Web client ID. Restart dev after editing either file.
 
 **Google Cloud Console:** add authorized JavaScript origins `http://localhost:5173` and `https://memora.cards`.
 

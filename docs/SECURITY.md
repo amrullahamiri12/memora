@@ -23,7 +23,7 @@ Last reviewed: **June 2026** (codebase on `main`). This document summarizes cont
 
 - **Passwords:** bcrypt, minimum 8 characters on register, reset, and change.
 - **JWT:** `JWT_SECRET` required; ≥32 characters enforced in production / Vercel.
-- **Google:** `credential` JWT verified with `GOOGLE_CLIENT_ID` (server); client uses same Web client ID via `VITE_GOOGLE_CLIENT_ID`.
+- **Google:** `credential` JWT verified with `GOOGLE_CLIENT_ID` in `server/.env`; UI needs `VITE_GOOGLE_CLIENT_ID` in `client/.env` (same Web client ID). Do not commit either file.
 - **Email verification:** Required for study **writes** (progress, enroll) on normal email/password accounts; guests and staff are exempt per product rules.
 - **Guests:** `@guest.memora.local` accounts; upgrade path to full registration.
 - **Deactivation:** `DELETE /admin/users/:id` sets `deactivated_at` (data retained). Users may `POST /auth/close-account`. Deactivated users receive `403` + `ACCOUNT_DEACTIVATED`.
