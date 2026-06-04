@@ -5,25 +5,12 @@ const { hashToken, generateToken, verificationExpiry } = require('./authTokens')
 const { sendVerificationEmail } = require('./email');
 const {
   USER_PUBLIC_COLUMNS,
-  publicUser,
   authCreated,
   authSuccess,
 } = require('./authUser');
+const { GUEST_EMAIL_SUFFIX, isGuestEmail } = require('./guestIdentity');
 
-const GUEST_EMAIL_SUFFIX = '@guest.memora.local';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function isGuestEmail(email) {
-  return typeof email === 'string' && email.endsWith(GUEST_EMAIL_SUFFIX);
-}
-
-function withGuestFlag(user) {
-  if (!user) return user;
-  if (user.emailVerified !== undefined) {
-    return { ...user, isGuest: isGuestEmail(user.email) };
-  }
-  return publicUser(user);
-}
 
 async function createGuest() {
   const subjectsRes = await db.query('SELECT id FROM subjects LIMIT 1');
@@ -96,7 +83,6 @@ async function upgradeGuest(userId, { name, email, password }) {
 module.exports = {
   GUEST_EMAIL_SUFFIX,
   isGuestEmail,
-  withGuestFlag,
   createGuest,
   upgradeGuest,
 };

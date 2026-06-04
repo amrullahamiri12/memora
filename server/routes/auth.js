@@ -5,7 +5,7 @@ const prisma = require('../lib/prisma');
 const authMiddleware = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const fastAuth = require('../lib/fastAuth');
-const { isGuestEmail } = require('../lib/guestAuth');
+const { isGuestEmail } = require('../lib/guestIdentity');
 const { publicUser } = require('../lib/authUser');
 
 const router = express.Router();

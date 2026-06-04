@@ -1,4 +1,4 @@
-const { isGuestEmail, withGuestFlag } = require('./guestAuth');
+const { isGuestEmail } = require('./guestIdentity');
 
 const USER_PUBLIC_COLUMNS = `id, name, email, role,
   password_hash AS "passwordHash",
@@ -14,6 +14,11 @@ function isEmailVerified(row) {
   if (isGuestEmail(row.email)) return true;
   if (isStaffRole(row.role)) return true;
   return Boolean(row.emailVerifiedAt);
+}
+
+function withGuestFlag(user) {
+  if (!user) return user;
+  return { ...user, isGuest: isGuestEmail(user.email) };
 }
 
 function publicUser(row) {
@@ -66,6 +71,7 @@ module.exports = {
   USER_PUBLIC_COLUMNS,
   isStaffRole,
   isEmailVerified,
+  withGuestFlag,
   publicUser,
   issueJwt,
   authSuccess,
