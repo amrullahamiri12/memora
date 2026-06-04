@@ -37,9 +37,14 @@ export async function api(path, options = {}) {
       headers,
     });
   } catch {
-    throw new Error(
-      'Cannot connect to the server. Run `npm run dev` in the server folder (port 5001).'
-    );
+    const host = typeof window !== 'undefined' ? window.location.hostname : '';
+    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    if (isLocal) {
+      throw new Error(
+        'Cannot connect to the API. From the project folder run: npm run dev (starts client + server on port 5001).'
+      );
+    }
+    throw new Error('Cannot reach the API. Wait a moment and try again, or refresh the page.');
   }
 
   const data = await res.json().catch(() => ({}));

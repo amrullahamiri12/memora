@@ -2,15 +2,16 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const prisma = require('./lib/prisma');
 const { validateConfig } = require('./lib/config');
 const { authLimiter, progressLimiter } = require('./middleware/rateLimit');
-const authRoutes = require('./routes/auth');
-const subjectRoutes = require('./routes/subjects');
-const topicRoutes = require('./routes/topics');
-const progressRoutes = require('./routes/progress');
-const profileRoutes = require('./routes/profile');
-const adminRoutes = require('./routes/admin');
+
+function lazy(loader) {
+  let router;
+  return (req, res, next) => {
+    if (!router) router = loader();
+    return router(req, res, next);
+  };
+}
 
 const configCheck = validateConfig();
 const configError = configCheck.ok ? null : configCheck.errors.join(' ');
@@ -22,22 +23,16 @@ function getClientOrigins() {
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
-
   const vercelOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
   const previewOrigin = process.env.VERCEL_BRANCH_URL
     ? `https://${process.env.VERCEL_BRANCH_URL}`
     : null;
-
   return [...new Set([...fromEnv, vercelOrigin, previewOrigin].filter(Boolean))];
 }
 
 const clientOrigins = getClientOrigins();
 
-app.use(
-  helmet({
-    contentSecurityPolicy: process.env.VERCEL ? false : undefined,
-  })
-);
+app.use(helmet({ contentSecurityPolicy: process.env.VERCEL ? false : undefined }));
 app.use(
   cors({
     origin: clientOrigins.length === 1 ? clientOrigins[0] : clientOrigins,
@@ -57,19 +52,19 @@ app.get('/api/health', async (_req, res) => {
   try {
     await require('./lib/pg').query('SELECT 1');
     res.json({ status: 'ok', database: 'connected' });
-  } catch (err) {
+  } catch {
     res.status(503).json({ status: 'error', database: 'disconnected' });
   }
 });
 
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
-app.use('/api/auth', authRoutes);
-app.use('/api/subjects', subjectRoutes);
-app.use('/api/topics', topicRoutes);
-app.use('/api/progress', progressLimiter, progressRoutes);
-app.use('/api/profile', profileRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/auth', lazy(() => require('./routes/auth')));
+app.use('/api/subjects', lazy(() => require('./routes/subjects')));
+app.use('/api/topics', lazy(() => require('./routes/topics')));
+app.use('/api/progress', progressLimiter, lazy(() => require('./routes/progress')));
+app.use('/api/profile', lazy(() => require('./routes/profile')));
+app.use('/api/admin', lazy(() => require('./routes/admin')));
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Not found' });

@@ -87,8 +87,13 @@ module.exports = async (req, res) => {
     return json(res, 500, { error: err.message || 'Request failed' });
   }
 
-  if (!expressHandler) {
-    expressHandler = serverless(require('../server/app'));
+  try {
+    if (!expressHandler) {
+      expressHandler = serverless(require('../server/app'));
+    }
+    return expressHandler(req, res);
+  } catch (err) {
+    console.error('Express handler error:', err);
+    return json(res, 500, { error: 'Server failed to load', details: err.message });
   }
-  return expressHandler(req, res);
 };
