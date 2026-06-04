@@ -8,6 +8,7 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import StatCard from '../components/ui/StatCard';
 import EmptyState from '../components/ui/EmptyState';
+import StudyTruncatedNotice from '../components/StudyTruncatedNotice';
 import { api } from '../utils/api';
 import {
   getStudyOptions,
@@ -277,6 +278,8 @@ export default function PracticePage() {
           />
         </div>
       </div>
+
+      <StudyTruncatedNotice topic={topic} />
 
       {error && (
         <div className="mb-4">

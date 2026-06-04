@@ -23,7 +23,9 @@ async function requireUser(authHeader) {
     return { error: { status: 401, body: { error: 'Authentication required' } } };
   }
   try {
-    const payload = jwt.verify(authHeader.slice(7), process.env.JWT_SECRET);
+    const payload = jwt.verify(authHeader.slice(7), process.env.JWT_SECRET, {
+      algorithms: ['HS256'],
+    });
     const { rows } = await db.query(
       'SELECT id, name, email, role FROM users WHERE id = $1 LIMIT 1',
       [payload.userId]
@@ -806,6 +808,13 @@ async function tryHandle(method, path, query, authHeader, body = null) {
     return subjectsEnroll(auth.user, body);
   }
 
+  if (method === 'POST' && progressPath(path)) {
+    const auth = await requireUser(authHeader);
+    if (auth.error) return auth.error;
+    const { saveProgressFast } = require('./progressFast');
+    return saveProgressFast(auth.user, body);
+  }
+
   if (method !== 'GET') return null;
 
   const needsAuth =
@@ -875,6 +884,11 @@ function subjectsAvailablePath(path) {
 function subjectsEnrollPath(path) {
   const normalized = path.replace(/\/$/, '');
   return normalized === '/subjects/enroll' || normalized === '/api/subjects/enroll';
+}
+
+function progressPath(path) {
+  const normalized = path.replace(/\/$/, '');
+  return normalized === '/progress' || normalized === '/api/progress';
 }
 
 function match(path, suffix) {
