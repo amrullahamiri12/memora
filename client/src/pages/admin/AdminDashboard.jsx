@@ -72,25 +72,6 @@ export default function AdminDashboard() {
       />
 
       <Card className="mb-6">
-        <h2 className="mb-1 text-lg font-semibold text-[var(--text-heading)]">Reports</h2>
-        <p className="mb-4 text-sm text-[var(--text-muted)]">
-          Drill down into detailed tables beyond this overview.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {REPORT_LINKS.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 transition hover:border-[var(--accent)]/40 hover:bg-[var(--surface-hover)]"
-            >
-              <p className="font-semibold text-[var(--text-heading)]">{item.title}</p>
-              <p className="mt-1 text-sm text-[var(--text-muted)]">{item.description}</p>
-            </Link>
-          ))}
-        </div>
-      </Card>
-
-      <Card className="mb-6">
         <form onSubmit={applyRange} className="flex flex-wrap items-end gap-4">
           <Input
             label="From"
@@ -206,6 +187,25 @@ export default function AdminDashboard() {
           </>
         )
       )}
+
+      <Card className="mt-8">
+        <h2 className="mb-1 text-lg font-semibold text-[var(--text-heading)]">Reports</h2>
+        <p className="mb-4 text-sm text-[var(--text-muted)]">
+          Drill down into detailed tables beyond this overview.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {REPORT_LINKS.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 transition hover:border-[var(--accent)]/40 hover:bg-[var(--surface-hover)]"
+            >
+              <p className="font-semibold text-[var(--text-heading)]">{item.title}</p>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">{item.description}</p>
+            </Link>
+          ))}
+        </div>
+      </Card>
     </Layout>
   );
 }
