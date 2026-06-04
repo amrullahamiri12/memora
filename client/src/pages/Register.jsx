@@ -103,8 +103,11 @@ export default function Register() {
             />
 
             <div>
-              <p className="mb-3 text-sm font-semibold text-[var(--text-heading)]">
-                Which subjects do you want to practice?
+              <p className="mb-1 text-sm font-semibold text-[var(--text-heading)]">
+                Subjects to practice
+              </p>
+              <p className="mb-3 text-xs text-[var(--text-muted)]">
+                Add one or more from the list. You can enroll in more later from your dashboard.
               </p>
               {catalogLoading ? (
                 <p className="text-sm text-[var(--text-muted)]">Loading subjects…</p>
