@@ -47,8 +47,12 @@ app.use(
 );
 app.use(express.json({ limit: '2mb' }));
 
+app.get('/api/ping', (_req, res) => {
+  res.json({ ok: true });
+});
+
 app.use('/api', (req, res, next) => {
-  if (configError && req.path !== '/health') {
+  if (configError && req.path !== '/health' && req.path !== '/ping') {
     return res.status(503).json({ error: configError });
   }
   next();

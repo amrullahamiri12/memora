@@ -30,16 +30,28 @@ export async function api(path, options = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
+  const controller = new AbortController();
+  const timeoutMs = 25000;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   let res;
   try {
     res = await fetch(apiUrl(path), {
       ...options,
       headers,
+      signal: controller.signal,
     });
-  } catch {
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(
+        'Request timed out. Check Vercel env vars (DATABASE_URL, DIRECT_URL, JWT_SECRET) and open /api/ping then /api/health on your site.'
+      );
+    }
     throw new Error(
       'Cannot connect to the server. Run `npm run dev` in the server folder (port 5001).'
     );
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   const text = await res.text();
