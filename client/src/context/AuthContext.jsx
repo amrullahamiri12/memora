@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api, getToken, setToken, removeToken } from '../utils/api';
 import { disableStudentView } from '../utils/studentView';
-import { clearGoogleSession } from '../utils/googleAuthSession';
+import { clearGoogleSession, rememberGoogleSignIn } from '../utils/googleAuthSession';
 
 const AuthContext = createContext(null);
 
@@ -108,13 +108,17 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ credential, subjectIds }),
     });
-    setUser(applyAuthResponse(data));
+    const nextUser = applyAuthResponse(data);
+    if (nextUser?.email) rememberGoogleSignIn(nextUser.email);
     return data;
   };
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     disableStudentView();
-    clearGoogleSession(user?.email);
+    await clearGoogleSession({
+      memoraEmail: user?.email,
+      hasGoogle: user?.hasGoogle,
+    });
     removeToken();
     setUser(null);
     setGoogleSessionNonce((n) => n + 1);

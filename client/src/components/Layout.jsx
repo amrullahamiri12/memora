@@ -30,9 +30,9 @@ export default function Layout({ children }) {
       .catch(() => {});
   }, [user, staff]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     disableStudentView();
-    logout();
+    await logout();
     navigate('/login');
   };
 
@@ -136,7 +136,11 @@ export default function Layout({ children }) {
                 )}
               </span>
               <ThemeToggle />
-              <button type="button" onClick={handleLogout} className="btn-secondary py-2 text-sm">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="btn-secondary g_id_signout py-2 text-sm"
+              >
                 Logout
               </button>
             </div>

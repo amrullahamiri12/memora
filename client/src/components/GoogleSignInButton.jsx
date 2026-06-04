@@ -40,7 +40,7 @@ export default function GoogleSignInButton({ onSuccess }) {
           <Alert>{error}</Alert>
         </div>
       )}
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center gap-2">
         <GoogleLogin
           key={googleSessionNonce}
           onSuccess={handleSuccess}
@@ -51,6 +51,10 @@ export default function GoogleSignInButton({ onSuccess }) {
           shape="rectangular"
           width="320"
         />
+        <p className="max-w-xs text-center text-xs text-[var(--text-muted)]">
+          This button uses your browser&apos;s Google account. Logging out of Memora does not sign you
+          out of Google.
+        </p>
       </div>
     </div>
   );
