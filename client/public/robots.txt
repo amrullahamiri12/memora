@@ -1,0 +1,19 @@
+# Memora — https://memora.cards
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /study/
+Disallow: /subjects/
+Disallow: /topics/
+Disallow: /practice/
+Disallow: /flashcards/
+Disallow: /profile
+Disallow: /account
+Disallow: /guest/
+Disallow: /verify-email
+Disallow: /api/
+
+Sitemap: https://memora.cards/sitemap.xml

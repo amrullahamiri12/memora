@@ -27,6 +27,7 @@ import GuestSetupPage from './pages/GuestSetupPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import SeoManager from './components/SeoManager';
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -217,6 +218,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
+          <SeoManager />
           <AppRoutes />
         </BrowserRouter>
       </AuthProvider>

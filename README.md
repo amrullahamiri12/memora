@@ -468,6 +468,14 @@ npm run sync:openapi      # copy docs/openapi.yaml → client/public/
 | `npm run dev` | `client/` | Vite dev server |
 | `npm run build` | `client/` | Production frontend build |
 
+## SEO & search engines
+
+Built-in: meta tags, Open Graph, `robots.txt`, `sitemap.xml`, and per-route titles. Public pages (`/`, `/login`, `/register`) are indexable; signed-in app routes use `noindex`.
+
+**You still need to register the site in [Google Search Console](https://search.google.com/search-console)** and submit the sitemap. Step-by-step: [docs/SEO.md](docs/SEO.md).
+
+Optional env: `VITE_SITE_URL=https://memora.cards` in `client/.env` and Vercel (canonical + social preview URLs).
+
 ## Roadmap
 
 - Spaced repetition (SM-2 or similar)
