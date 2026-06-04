@@ -6,16 +6,18 @@ A full-stack flashcard web app for studying topics with progress tracking, strea
 
 | Layer | Stack |
 |-------|--------|
-| Frontend | React 19, Vite, Tailwind CSS, React Router |
-| Backend | Node.js, Express 5 |
+| Frontend | React 19, Vite, Tailwind CSS, React Router, Recharts (admin dashboard) |
+| Backend | Node.js, Express 5 (local + serverless fallback), `pg` fast paths on Vercel |
 | Database | SQLite (local dev) or PostgreSQL / Supabase (production) |
-| ORM | Prisma |
-| Auth | JWT (bcrypt password hashing) |
+| ORM | Prisma (Express routes); raw SQL fast paths for hot Vercel routes |
+| Auth | JWT (bcrypt), email verification (Resend), Google Sign-In, guest sessions |
+| Quality | Vitest, GitHub Actions CI, Supertest API smoke tests |
+| Hosting | Vercel (static client + `api/index.js` serverless function) |
 
 ## Features
 
 ### Learners
-- Registration with **subject enrollment**; dashboard shows only enrolled subjects
+- **Guest mode** or full registration with **subject enrollment**; dashboard shows only enrolled subjects
 - **Add more subjects** anytime from the dashboard
 - **Study hub** per topic: Learn, Flashcards, and Test
 - Session options: shuffle, weak-cards-only, question-type filters (stored per topic in `localStorage`)
@@ -140,9 +142,12 @@ Import the repo in [Vercel](https://vercel.com). Defaults from `vercel.json` are
 
 | Setting | Value |
 |---------|--------|
-| Build Command | `npm run build:vercel` |
+| Build Command | `npm run build:vercel` → `scripts/build-vercel.sh` |
 | Output Directory | `client/dist` |
-| Install Command | installs root, `server/`, and `client/` |
+| Install Command | root + `server` (prod deps only) + `client` (incl. dev for Vite build) |
+| API | Single function `api/index.js` → `/api/*` |
+
+**Serverless bundle:** Never set `includeFiles: server/**` (exceeds 250MB). File tracing from `api/index.js` plus short `excludeFiles` for macOS Prisma binaries. See [docs/SECURITY.md](docs/SECURITY.md).
 
 ### 3. Environment variables (Vercel → Settings → Environment Variables)
 
@@ -157,7 +162,7 @@ Import the repo in [Vercel](https://vercel.com). Defaults from `vercel.json` are
 
 `VERCEL_URL` is set automatically for CORS on preview deployments.
 
-Migrations run during build (`prisma migrate deploy`). Seed once locally against the same database if you want demo data:
+Schema sync on Vercel build uses `prisma db push` when `DATABASE_URL` is set (see `scripts/build-vercel.sh`). For migration history, run `npx prisma migrate deploy` locally or in CI against the same database. Seed once locally if you want demo data:
 
 ```bash
 cd server && DATABASE_URL="your-postgres-url" npm run db:seed
@@ -224,25 +229,30 @@ cd server && npx prisma migrate deploy && npm run db:seed
 
 ```
 flashcards/
+├── api/
+│   └── index.js             # Vercel serverless entry (fast paths + Express fallback)
 ├── client/
-│   ├── public/              # Logos, favicon
+│   ├── public/              # Logos, openapi.yaml (synced), api-docs.html
 │   └── src/
-│       ├── components/      # UI, study cards, auth layout
+│       ├── components/      # UI, study cards, admin dashboard tiles
 │       ├── context/         # Auth, theme
-│       ├── pages/           # Dashboard, study, admin
-│       └── utils/           # API client, study options, roles
+│       ├── pages/           # Learner + admin (dashboard, reports, cards)
+│       └── utils/           # API client, report dates, roles
 ├── server/
-│   ├── lib/                 # Business logic (progress, MCQ, pagination, config)
+│   ├── lib/                 # fastApi, fastAuth, adminReports, MCQ, CSV, pg
 │   ├── middleware/          # Auth, admin, validation, rate limits
 │   ├── prisma/
-│   │   ├── schema.prisma
-│   │   ├── migrations/
-│   │   └── seed.js
-│   └── routes/              # auth, subjects, topics, progress, profile, admin
+│   ├── routes/              # Express routers (local + cold-path fallback)
+│   └── tests/               # Vitest unit + API smoke
 ├── docs/
-│   └── openapi.yaml         # OpenAPI 3 spec (source of truth)
-├── package.json             # Root scripts (setup, dev)
-└── README.md
+│   ├── openapi.yaml         # OpenAPI 3 spec (source of truth)
+│   └── SECURITY.md          # Security assessment & ops checklist
+├── scripts/
+│   ├── build-vercel.sh      # Production build (tests skipped on Vercel)
+│   └── sync-vercel-auth-env.sh
+├── .github/workflows/ci.yml # Test + build on push/PR to main
+├── vercel.json
+└── package.json
 ```
 
 ## API Reference
@@ -361,21 +371,21 @@ For `GET /subjects/:id/topics`, **omit** `page` and `limit` to return all topics
 
 ## Security
 
-- Passwords hashed with bcrypt (min **8** characters on register and password change)
-- JWT required for protected routes; admin routes also check role
-- **Deactivated** accounts cannot authenticate; learners may close their own account
-- Email verification required for study **writes** (progress, enroll) on verified email/password accounts
-- Google ID tokens verified server-side with `GOOGLE_CLIENT_ID`
-- Progress writes verify the user is enrolled in the card’s subject (or staff)
-- `helmet` HTTP security headers
-- Rate limits on all auth **POST** routes and on progress POST
-- Request body size capped at 2MB; CSV import capped by `MAX_CSV_BYTES`
-- `JWT_SECRET` validated at server startup (≥ 32 characters in production)
-- Root `package.json` uses an **npm override** for transitive `uuid` (Google auth dependency chain)
+Full assessment: **[docs/SECURITY.md](docs/SECURITY.md)** (last reviewed June 2026).
 
-**Note:** Tokens are stored in `localStorage` in the browser. For high-security deployments, consider httpOnly cookies and HTTPS-only production.
+**Implemented controls:**
 
-After editing [`docs/openapi.yaml`](docs/openapi.yaml), run `npm run sync:openapi` so the client build serves the same spec.
+- bcrypt passwords (min 8 chars); JWT on protected routes; role checks for admin
+- Email verification gate for study writes; Google token verification server-side
+- Account deactivation (admin + self-service close); super-admin reactivate / verify-email
+- Rate limits: auth POST 40/15min/IP; progress 150/min/IP (Express + Vercel fast paths)
+- Helmet headers; 2MB JSON body limit; CSV import size cap
+- `JWT_SECRET` length validation in production; npm `uuid` override for Google auth chain
+- No production secrets in git; dev-only Vitest patched (≥4.1.8)
+
+**Advisory:** JWTs live in `localStorage` (XSS risk). Prefer HTTPS-only production; consider httpOnly cookies for stricter deployments.
+
+After editing [`docs/openapi.yaml`](docs/openapi.yaml), run `npm run sync:openapi`.
 
 ## CSV Import & Question Types
 
@@ -418,28 +428,32 @@ npm run db:seed             # seed admin + sample cards
 | `JWT_SECRET` startup error | Set a secret ≥ 32 characters in `server/.env` |
 | `Too many attempts` on login | Wait 15 minutes or restart server (dev rate limit resets) |
 | Frontend API not reaching backend | Confirm Vite proxy in `client/vite.config.js` points to port 5001 |
+| Vercel build > 250MB function | Remove `includeFiles: server/**`; see [docs/SECURITY.md](docs/SECURITY.md) |
+| `vercel.json` schema error | `excludeFiles` must be ≤256 characters (use short globs) |
+| Vercel deploy OK but API 503 | Check `JWT_SECRET`, `DATABASE_URL`, `DIRECT_URL` in project env |
 
 ## Testing & CI
 
-Tests run on every push to `main` via [GitHub Actions](.github/workflows/ci.yml). Vercel builds skip tests (same gate already passed on push) to keep the serverless bundle lean.
+| When | What runs |
+|------|-----------|
+| Push / PR to `main` | [GitHub Actions](.github/workflows/ci.yml) → `npm run ci` (30 tests + client build) |
+| Local pre-push | `npm run ci` (same as Actions) |
+| Vercel deploy | `scripts/build-vercel.sh` — **no tests** on Vercel (keeps bundle small; rely on CI on `main`) |
 
-**Vercel function size:** Do not use `includeFiles: server/**` — that copies all of `server/node_modules` (~300MB+) and exceeds the 250MB limit. The API relies on file tracing from `api/index.js` instead.
-
-| Layer | Tool | What is covered |
-|-------|------|-----------------|
-| Server unit | Vitest | Question types, MCQ grading, roles, config, auth helpers, rate limits |
-| Server API smoke | Vitest + Supertest | Health, 404, auth config (DB mocked) |
-| Client unit | Vitest | Report date helpers, role permission helpers |
+| Layer | Tool | Coverage |
+|-------|------|----------|
+| Server unit | Vitest 4 | Question types, MCQ, roles, config, authUser, rate limits |
+| Server API smoke | Supertest | `/api/health`, 404, `/api/auth/config` |
+| Client unit | Vitest 4 | `reportDates`, `roles`, `formatDashboardNum` |
 
 ```bash
-npm run test              # server + client
-npm run test --prefix server
-npm run test --prefix client
-npm run ci                # test + client production build (matches deploy gate)
-npm run lint              # eslint (client; fix or tighten before requiring in CI)
+npm run test              # server + client (24 + 6 tests)
+npm run ci                # test + client production build
+npm run lint              # client ESLint (not gated in CI yet)
+npm run sync:openapi      # copy docs/openapi.yaml → client/public/
 ```
 
-**Recommended workflow:** run `npm run ci` before pushing; GitHub Actions and Vercel run the same tests before build/deploy. For deeper coverage later, add Prisma/SQLite integration tests or Playwright E2E against a seeded dev DB.
+**Next test improvements:** DB integration tests, Playwright E2E, ESLint in CI after rule cleanup.
 
 ## Scripts
 

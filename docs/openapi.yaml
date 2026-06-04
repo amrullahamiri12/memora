@@ -14,10 +14,16 @@ info:
 
     **Account lifecycle:** Users are **deactivated** (not hard-deleted). Learners may **close** their own account. Super admins can **reactivate** deactivated users and **verify email** manually.
 
-    **Vercel fast paths** (lightweight `pg`, avoid Express cold start): health, most auth routes, subjects catalog, progress, admin reports, and many admin CRUD routes. Unmatched routes may load Express on first request.
+    **Deployment:** Production uses one Vercel serverless handler (`api/index.js`). Fast paths use `pg` and avoid loading Express when possible; remaining traffic falls back to Express + Prisma.
+
+    **CI:** Pushes to `main` run unit/smoke tests via GitHub Actions (`npm run ci`). Vercel builds use `scripts/build-vercel.sh` (tests skipped on Vercel; Prisma Linux engine only).
+
+    **Vercel fast paths** (representative): health, auth (login/register/guest/Google/verify/password), subjects catalog, progress POST, admin reports, many admin list/import routes. Subject/topic/flashcard mutations and some admin exports may use Express on first hit.
+
+    **Sync spec to client build:** `npm run sync:openapi` copies this file to `client/public/openapi.yaml`.
 
     Interactive docs: https://memora.cards/api-docs.html · Raw spec: `/openapi.yaml`
-  version: 1.0.0
+  version: 1.1.0
   contact:
     name: Memora
     url: https://memora.cards/
