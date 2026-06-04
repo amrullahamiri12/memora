@@ -71,6 +71,7 @@ export async function api(path, options = {}) {
   if (!res.ok) {
     const message =
       data.error ||
+      data.details ||
       data.config ||
       data.errors?.[0]?.msg ||
       (res.status === 403

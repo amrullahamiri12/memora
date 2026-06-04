@@ -13,11 +13,15 @@ function loadPrismaClient() {
 function createPrismaClient() {
   const PrismaClient = loadPrismaClient();
   const connectionString = withServerlessParams(process.env.DATABASE_URL);
+  const isLocal =
+    connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
   const pool = new Pool({
     connectionString,
     max: 1,
     connectionTimeoutMillis: 10_000,
     idleTimeoutMillis: 5_000,
+    allowExitOnIdle: true,
+    ssl: isLocal ? false : { rejectUnauthorized: false },
   });
   return new PrismaClient({
     adapter: new PrismaPg(pool),

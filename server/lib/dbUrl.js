@@ -8,9 +8,6 @@ function withServerlessParams(url) {
   if (!url.includes('connect_timeout=')) {
     params.push('connect_timeout=10');
   }
-  if (!url.includes('sslmode=')) {
-    params.push('sslmode=require');
-  }
   if (url.includes(':6543') && !url.includes('pgbouncer=true')) {
     params.push('pgbouncer=true');
   }

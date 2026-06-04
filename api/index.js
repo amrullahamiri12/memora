@@ -2,8 +2,19 @@ const serverless = require('serverless-http');
 
 let expressHandler;
 
+/** Original path is kept on Vercel rewrites; x-forwarded-uri is a fallback. */
 function requestPath(req) {
-  return (req.url || '/').split('?')[0];
+  const forwarded = req.headers['x-forwarded-uri'] || req.headers['x-invoke-path'];
+  const raw = forwarded || req.url || '/';
+  const path = raw.split('?')[0];
+  if (path.startsWith('http')) {
+    try {
+      return new URL(path).pathname;
+    } catch {
+      return path;
+    }
+  }
+  return path;
 }
 
 function respondJson(res, status, body) {
@@ -14,18 +25,39 @@ function respondJson(res, status, body) {
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
+    if (req.body !== undefined && req.body !== null) {
+      if (typeof req.body === 'string') {
+        try {
+          resolve(req.body ? JSON.parse(req.body) : {});
+        } catch (err) {
+          reject(err);
+        }
+        return;
+      }
+      if (typeof req.body === 'object') {
+        resolve(req.body);
+        return;
+      }
+    }
+
     let data = '';
+    const timer = setTimeout(() => reject(new Error('Request body read timeout')), 5000);
+
     req.on('data', (chunk) => {
       data += chunk;
     });
     req.on('end', () => {
+      clearTimeout(timer);
       try {
         resolve(data ? JSON.parse(data) : {});
       } catch (err) {
         reject(err);
       }
     });
-    req.on('error', reject);
+    req.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
   });
 }
 
@@ -54,6 +86,21 @@ function handleHealth(res) {
   respondJson(res, 200, { status: 'ok', config: 'present' });
 }
 
+async function handleHealthDb(res) {
+  try {
+    const { withPool } = require('../server/lib/pgPool');
+    await withPool((pool) => pool.query('SELECT 1'));
+    respondJson(res, 200, { status: 'ok', database: 'connected' });
+  } catch (err) {
+    console.error('DB health error:', err);
+    respondJson(res, 503, {
+      status: 'error',
+      database: 'disconnected',
+      details: err.message,
+    });
+  }
+}
+
 async function handleLogin(req, res) {
   try {
     const body = await readJsonBody(req);
@@ -70,32 +117,74 @@ async function handleLogin(req, res) {
     respondJson(res, result.status, result.body);
   } catch (err) {
     console.error('Fast login error:', err);
-    if (err.message?.includes('timeout') || err.code === 'ETIMEDOUT') {
+    const msg = err.message || 'Login failed';
+    if (msg.includes('timeout') || err.code === 'ETIMEDOUT' || err.code === 'ECONNREFUSED') {
       respondJson(res, 503, {
         error:
-          'Database connection timed out. Use the Supabase pooler URL (port 6543) for DATABASE_URL.',
+          'Cannot reach the database. Use Supabase Transaction pooler (port 6543) with ?pgbouncer=true for DATABASE_URL.',
+        details: msg,
       });
       return;
     }
-    respondJson(res, 500, { error: 'Login failed' });
+    respondJson(res, 500, { error: 'Login failed', details: msg });
   }
+}
+
+async function handleMe(req, res) {
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    respondJson(res, 401, { error: 'Authentication required' });
+    return;
+  }
+
+  try {
+    const jwt = require('jsonwebtoken');
+    const { getUserById } = require('../server/lib/authServerless');
+    const token = authHeader.slice(7);
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await getUserById(payload.userId);
+
+    if (!user) {
+      respondJson(res, 401, { error: 'User not found' });
+      return;
+    }
+
+    respondJson(res, 200, { user });
+  } catch (err) {
+    console.error('Fast /me error:', err);
+    respondJson(res, 401, { error: 'Invalid or expired token' });
+  }
+}
+
+function matchesPath(path, suffix) {
+  return path === suffix || path.endsWith(suffix);
 }
 
 module.exports = (req, res) => {
   const path = requestPath(req);
 
-  if (path.endsWith('/ping')) {
+  if (matchesPath(path, '/ping')) {
     respondJson(res, 200, { ok: true });
     return;
   }
 
-  if (path.endsWith('/health')) {
+  if (matchesPath(path, '/health/db')) {
+    handleHealthDb(res);
+    return;
+  }
+
+  if (matchesPath(path, '/health')) {
     handleHealth(res);
     return;
   }
 
-  if (req.method === 'POST' && path.endsWith('/auth/login')) {
+  if (req.method === 'POST' && matchesPath(path, '/auth/login')) {
     handleLogin(req, res);
+    return;
+  }
+
+  if (req.method === 'GET' && matchesPath(path, '/auth/me')) {
+    handleMe(req, res);
     return;
   }
 
