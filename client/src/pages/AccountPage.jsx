@@ -87,12 +87,18 @@ export default function AccountPage() {
                 <dt className="w-20 font-medium text-[var(--text-muted)]">Email</dt>
                 <dd className="text-[var(--text-heading)]">{user?.email}</dd>
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-4 border-b border-[var(--border)] pb-3">
                 <dt className="w-20 font-medium text-[var(--text-muted)]">Role</dt>
                 <dd>
                   <span className="rounded-full bg-[var(--accent-glow)] px-2.5 py-0.5 text-xs font-semibold text-[var(--accent)]">
                     {user?.role}
                   </span>
+                </dd>
+              </div>
+              <div className="flex gap-4">
+                <dt className="w-20 font-medium text-[var(--text-muted)]">Email status</dt>
+                <dd className="text-[var(--text-heading)]">
+                  {user?.emailVerified ? 'Verified' : 'Not verified'}
                 </dd>
               </div>
             </dl>

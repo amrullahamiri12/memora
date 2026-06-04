@@ -2,7 +2,11 @@ const { randomUUID } = require('crypto');
 const bcrypt = require('bcryptjs');
 const db = require('./pg');
 const { hashToken, generateToken, verificationExpiry } = require('./authTokens');
-const { sendVerificationEmail } = require('./email');
+const {
+  isEmailConfigured,
+  emailSendFailureMessage,
+  sendVerificationEmail,
+} = require('./email');
 const {
   USER_PUBLIC_COLUMNS,
   authCreated,
@@ -74,9 +78,14 @@ async function upgradeGuest(userId, { name, email, password }) {
      RETURNING ${USER_PUBLIC_COLUMNS}`,
     [trimmedName, trimmedEmail, passwordHash, verifyHash, verifyExpires, userId]
   );
-  await sendVerificationEmail(trimmedEmail, verifyToken);
+  const emailResult = await sendVerificationEmail(trimmedEmail, verifyToken);
   const result = authSuccess(rows[0]);
   result.body.message = 'Account created — check your email to verify.';
+  result.body.emailSent = Boolean(emailResult?.ok);
+  result.body.emailConfigured = isEmailConfigured();
+  if (!result.body.emailSent && result.body.emailConfigured) {
+    result.body.emailWarning = emailSendFailureMessage(emailResult);
+  }
   return result;
 }
 

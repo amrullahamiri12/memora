@@ -22,16 +22,28 @@ export default function VerifyEmailPage() {
   const verifyStartedRef = useRef(false);
 
   useEffect(() => {
+    if (user?.emailVerified) {
+      navigate('/dashboard', { replace: true });
+      return;
+    }
     api('/auth/config')
       .then((cfg) => setEmailConfigured(cfg.emailConfigured))
       .catch(() => {});
-  }, []);
+  }, [user?.emailVerified, navigate]);
 
   useEffect(() => {
-    if (location.state?.emailConfigured === false || location.state?.emailSent === false) {
+    if (location.state?.emailWarning) {
+      setError(location.state.emailWarning);
+      return;
+    }
+    if (location.state?.emailConfigured === false) {
       setError(
         'Your account was created, but verification email is not set up on the server yet. Ask an admin to verify your email or try again later.'
       );
+      return;
+    }
+    if (location.state?.emailSent === false && location.state?.emailConfigured) {
+      setError('Your account was created, but we could not send the verification email. Try resend below.');
     }
   }, [location.state]);
 

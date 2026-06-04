@@ -58,7 +58,11 @@ export default function Register() {
       const user = data.user;
       if (user.emailVerified === false) {
         navigate('/verify-email', {
-          state: { emailSent: data.emailSent, emailConfigured: data.emailConfigured },
+          state: {
+            emailSent: data.emailSent,
+            emailConfigured: data.emailConfigured,
+            emailWarning: data.emailWarning,
+          },
         });
       } else {
         navigate('/dashboard');

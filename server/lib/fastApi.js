@@ -139,7 +139,8 @@ async function adminUsers(query) {
       GUEST_EMAIL_PATTERN,
     ]),
     db.query(
-      `SELECT id, name, email, role, created_at AS "createdAt"
+      `SELECT id, name, email, role, created_at AS "createdAt",
+              (email_verified_at IS NOT NULL) AS "emailVerified"
        FROM users WHERE email NOT LIKE $3
        ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
       [limit, skip, GUEST_EMAIL_PATTERN]

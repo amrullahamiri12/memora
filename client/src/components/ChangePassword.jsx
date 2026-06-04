@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
 import Input from './ui/Input';
 import Button from './ui/Button';
@@ -6,12 +8,31 @@ import Alert from './ui/Alert';
 import Card from './ui/Card';
 
 export default function ChangePassword() {
+  const { user } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
+
+  if (user?.hasPassword === false) {
+    return (
+      <Card>
+        <h2 className="mb-2 text-lg font-semibold">Password</h2>
+        <p className="text-sm text-[var(--text-muted)]">
+          {user.hasGoogle
+            ? 'You sign in with Google. To add a password for email login, use forgot password with your account email.'
+            : 'No password is set on this account yet.'}
+        </p>
+        <p className="mt-4">
+          <Link to="/forgot-password" className="font-semibold text-[var(--accent)] hover:underline">
+            Set a password via email reset
+          </Link>
+        </p>
+      </Card>
+    );
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,7 +87,7 @@ export default function ChangePassword() {
           type="password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
-          placeholder="At least 6 characters"
+          placeholder="At least 8 characters"
           required
         />
         <Input

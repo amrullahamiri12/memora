@@ -37,9 +37,15 @@ export default function GuestAccountUpgrade() {
     setLoading(true);
     try {
       const result = await upgradeGuest(name.trim(), email.trim(), password);
-      setSuccess(result.message || 'Account created — check your email to verify.');
       setPassword('');
-      navigate('/verify-email', { replace: true });
+      navigate('/verify-email', {
+        replace: true,
+        state: {
+          emailSent: result.emailSent,
+          emailConfigured: result.emailConfigured,
+          emailWarning: result.emailWarning,
+        },
+      });
     } catch (err) {
       setError(err.message);
     } finally {

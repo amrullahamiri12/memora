@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { body } = require('express-validator');
 const prisma = require('../lib/prisma');
 const authMiddleware = require('../middleware/auth');
+const optionalAuth = require('../middleware/optionalAuth');
 const validate = require('../middleware/validate');
 const fastAuth = require('../lib/fastAuth');
 const { isGuestEmail } = require('../lib/guestIdentity');
@@ -84,9 +85,9 @@ router.post(
   }
 );
 
-router.post('/verify-email', async (req, res) => {
+router.post('/verify-email', optionalAuth, async (req, res) => {
   try {
-    send(res, await fastAuth.verifyEmail(req.body.token, { userId: req.user?.userId }));
+    send(res, await fastAuth.verifyEmail(req.body.token, { userId: req.user?.id }));
   } catch (err) {
     console.error('Verify email error:', err);
     res.status(500).json({ error: 'Verification failed' });

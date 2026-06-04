@@ -104,6 +104,19 @@ export default function AdminUsers() {
     setShowForm(false);
   };
 
+  const handleVerifyEmail = async (user) => {
+    if (!actorIsSuperAdmin) return;
+    if (!confirm(`Mark ${user.email} as verified? They can study without clicking the email link.`)) {
+      return;
+    }
+    try {
+      await api(`/admin/users/${user.id}/verify-email`, { method: 'POST' });
+      loadUsers(page);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const handleDelete = async (user) => {
     if (!canDeleteUser(currentUser, user)) {
       setError(
@@ -273,6 +286,7 @@ export default function AdminUsers() {
                 <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Name</th>
                 <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Email</th>
                 <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Role</th>
+                <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Verified</th>
                 <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Joined</th>
                 <th className="px-4 py-3 font-semibold text-[var(--text-muted)]">Actions</th>
               </tr>
@@ -303,11 +317,29 @@ export default function AdminUsers() {
                         {roleLabel(user.role)}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      {user.emailVerified ? (
+                        <span className="text-xs font-medium text-[var(--accent)]">Yes</span>
+                      ) : (
+                        <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                          No
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-[var(--text-muted)]">
                       {new Date(user.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-3">
+                      <div className="flex flex-wrap gap-3">
+                        {actorIsSuperAdmin && !user.emailVerified && user.role === 'USER' && (
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyEmail(user)}
+                            className="font-medium text-[var(--accent)] hover:underline"
+                          >
+                            Verify email
+                          </button>
+                        )}
                         {allowEdit ? (
                           <button
                             type="button"

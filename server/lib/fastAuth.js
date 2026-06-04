@@ -50,7 +50,13 @@ async function findUserById(userId) {
 async function login(email, password) {
   const trimmedEmail = (email || '').trim().toLowerCase();
   const user = await findUserByEmail(trimmedEmail);
-  if (!user || !user.passwordHash) {
+  if (!user) {
+    return { status: 401, body: { error: 'Invalid email or password' } };
+  }
+  if (!user.passwordHash) {
+    if (user.googleId) {
+      return { status: 401, body: { error: 'This account uses Google sign-in' } };
+    }
     return { status: 401, body: { error: 'Invalid email or password' } };
   }
 
@@ -114,6 +120,9 @@ async function register({ name, email, password, subjectIds }) {
     const created = authCreated(rows[0]);
     created.body.emailSent = Boolean(emailResult?.ok);
     created.body.emailConfigured = isEmailConfigured();
+    if (!created.body.emailSent && created.body.emailConfigured) {
+      created.body.emailWarning = emailSendFailureMessage(emailResult);
+    }
     return created;
   } catch (err) {
     await client.query('ROLLBACK');
