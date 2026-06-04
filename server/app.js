@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const { validateConfig } = require('./lib/config');
 const { authLimiter, progressLimiter } = require('./middleware/rateLimit');
+const pg = require('./lib/pg');
 
 function lazy(loader) {
   let router;
@@ -50,7 +51,7 @@ app.use('/api', (req, res, next) => {
 
 app.get('/api/health', async (_req, res) => {
   try {
-    await require('./lib/pg').query('SELECT 1');
+    await pg.query('SELECT 1');
     res.json({ status: 'ok', database: 'connected' });
   } catch {
     res.status(503).json({ status: 'error', database: 'disconnected' });
