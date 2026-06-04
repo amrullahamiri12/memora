@@ -26,6 +26,7 @@ export default function Layout({ children }) {
 
   const isActive = (path) => {
     if (path === '/admin') return location.pathname === '/admin';
+    if (path === '/dashboard') return location.pathname === '/dashboard';
     return location.pathname.startsWith(path);
   };
 
@@ -52,6 +53,7 @@ export default function Layout({ children }) {
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {isStaff(user?.role) ? (
                 <>
+                  {navLink('/dashboard', 'Dashboard')}
                   {navLink('/admin', 'Cards')}
                   {navLink('/admin/subjects', 'Subjects')}
                   {navLink('/admin/users', 'Users')}
