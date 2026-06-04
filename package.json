@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "setup": "npm install --prefix server && npm install --prefix client && npm run db:migrate --prefix server && npm run db:seed --prefix server",
-    "build:vercel": "cd server && npx prisma generate && npx prisma migrate deploy && cd ../client && npm run build"
+    "build:vercel": "cd server && npx prisma generate && npx prisma db push --skip-generate && cd ../client && npm run build"
   },
   "dependencies": {
     "serverless-http": "^3.2.0"
