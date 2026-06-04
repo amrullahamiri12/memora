@@ -1,7 +1,21 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { ProtectedRoute, AdminRoute, GuestRoute } from './components/ProtectedRoute';
+import { ProtectedRoute, StudentViewRoute, AdminRoute, GuestRoute } from './components/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
+import { isStaff } from './utils/roles';
+import { isStudentViewActive } from './utils/studentView';
+import Spinner from './components/ui/Spinner';
+
+function HomeRedirect() {
+  const { user, loading } = useAuth();
+  if (loading) return <Spinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (isStaff(user.role) && !isStudentViewActive()) {
+    return <Navigate to="/admin" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
+}
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -21,7 +35,7 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<HomeRedirect />} />
           <Route
             path="/login"
             element={
@@ -41,49 +55,49 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <StudentViewRoute>
                 <Dashboard />
-              </ProtectedRoute>
+              </StudentViewRoute>
             }
           />
           <Route
             path="/subjects/:id"
             element={
-              <ProtectedRoute>
+              <StudentViewRoute>
                 <SubjectPage />
-              </ProtectedRoute>
+              </StudentViewRoute>
             }
           />
           <Route
             path="/study/:topicId"
             element={
-              <ProtectedRoute>
+              <StudentViewRoute>
                 <StudyPage />
-              </ProtectedRoute>
+              </StudentViewRoute>
             }
           />
           <Route
             path="/practice/:topicId"
             element={
-              <ProtectedRoute>
+              <StudentViewRoute>
                 <PracticePage />
-              </ProtectedRoute>
+              </StudentViewRoute>
             }
           />
           <Route
             path="/flashcards/:topicId"
             element={
-              <ProtectedRoute>
+              <StudentViewRoute>
                 <FlashcardsPage />
-              </ProtectedRoute>
+              </StudentViewRoute>
             }
           />
           <Route
             path="/profile"
             element={
-              <ProtectedRoute>
+              <StudentViewRoute>
                 <ProfilePage />
-              </ProtectedRoute>
+              </StudentViewRoute>
             }
           />
           <Route

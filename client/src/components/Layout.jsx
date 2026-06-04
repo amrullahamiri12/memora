@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isStaff } from '../utils/roles';
+import {
+  disableStudentView,
+  enableStudentView,
+  isStudentViewActive,
+} from '../utils/studentView';
 import { api } from '../utils/api';
 import ThemeToggle from './ThemeToggle';
 import Logo from './Logo';
@@ -9,19 +14,35 @@ import Logo from './Logo';
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const [streak, setStreak] = useState(0);
+  const [studentView, setStudentView] = useState(isStudentViewActive);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const staff = isStaff(user?.role);
+  const inStudentPreview = staff && studentView;
 
   useEffect(() => {
-    if (!user || isStaff(user.role)) return;
+    if (!user || staff) return;
     api('/profile')
       .then((p) => setStreak(p?.stats?.streak ?? 0))
       .catch(() => {});
-  }, [user]);
-  const navigate = useNavigate();
-  const location = useLocation();
+  }, [user, staff]);
 
   const handleLogout = () => {
+    disableStudentView();
     logout();
     navigate('/login');
+  };
+
+  const enterStudentPreview = () => {
+    enableStudentView();
+    setStudentView(true);
+    navigate('/dashboard');
+  };
+
+  const exitStudentPreview = () => {
+    disableStudentView();
+    setStudentView(false);
+    navigate('/admin');
   };
 
   const isActive = (path) => {
@@ -39,6 +60,8 @@ export default function Layout({ children }) {
     </Link>
   );
 
+  const logoTo = staff && !studentView ? '/admin' : '/dashboard';
+
   return (
     <div className="min-h-screen">
       <nav
@@ -48,16 +71,40 @@ export default function Layout({ children }) {
         <div className="mx-auto max-w-6xl px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="nav-brand">
-              <Logo to={isStaff(user?.role) ? '/admin' : '/dashboard'} variant="nav" />
+              <Logo to={logoTo} variant="nav" />
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              {isStaff(user?.role) ? (
+              {staff && !studentView ? (
                 <>
-                  {navLink('/dashboard', 'Dashboard')}
                   {navLink('/admin', 'Cards')}
                   {navLink('/admin/subjects', 'Subjects')}
                   {navLink('/admin/users', 'Users')}
                   {navLink('/account', 'Account')}
+                  <button
+                    type="button"
+                    onClick={enterStudentPreview}
+                    className="nav-link text-[var(--accent)]"
+                  >
+                    Preview as student
+                  </button>
+                </>
+              ) : staff && studentView ? (
+                <>
+                  {navLink('/dashboard', 'Dashboard')}
+                  <Link
+                    to="/profile"
+                    className={`nav-link flex items-center gap-1.5 ${isActive('/profile') ? 'nav-link-active' : ''}`}
+                  >
+                    Profile
+                  </Link>
+                  {navLink('/account', 'Account')}
+                  <button
+                    type="button"
+                    onClick={exitStudentPreview}
+                    className="nav-link font-medium text-[var(--accent-deep)]"
+                  >
+                    Exit preview
+                  </button>
                 </>
               ) : (
                 <>
@@ -78,6 +125,9 @@ export default function Layout({ children }) {
               )}
               <span className="hidden rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-medium text-[var(--text-muted)] sm:inline">
                 {user?.name}
+                {inStudentPreview && (
+                  <span className="ml-1.5 text-[var(--accent)]">· preview</span>
+                )}
               </span>
               <ThemeToggle />
               <button type="button" onClick={handleLogout} className="btn-secondary py-2 text-sm">
@@ -87,6 +137,14 @@ export default function Layout({ children }) {
           </div>
         </div>
       </nav>
+      {inStudentPreview && (
+        <div
+          className="border-b border-[var(--accent)]/25 bg-[var(--accent-glow)] px-4 py-2 text-center text-sm text-[var(--text-heading)]"
+          role="status"
+        >
+          Student preview — you are viewing the app as a learner. Progress saves to your admin account.
+        </div>
+      )}
       <main className="mx-auto max-w-6xl px-4 py-8 page-enter">{children}</main>
     </div>
   );
