@@ -1,7 +1,16 @@
+const { randomUUID } = require('crypto');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('./pg');
 const { paginatedResponse } = require('./pagination');
-const { canDeleteUser } = require('./roles');
+const {
+  canAssignRole,
+  canDeleteUser,
+  canEditUser,
+  assertRoleChangeAllowed,
+} = require('./roles');
+
+const VALID_ROLES = ['USER', 'ADMIN', 'SUPER_ADMIN'];
 
 const STAFF = ['ADMIN', 'SUPER_ADMIN'];
 
@@ -132,6 +141,121 @@ function parseAdminUserId(path) {
   return m ? m[1] : null;
 }
 
+function validateUserPayload(body, { requirePassword }) {
+  const name = typeof body?.name === 'string' ? body.name.trim() : '';
+  const email = typeof body?.email === 'string' ? body.email.trim() : '';
+  const role = body?.role;
+  const password = typeof body?.password === 'string' ? body.password : '';
+
+  if (!name) return { error: 'Name is required' };
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: 'Valid email is required' };
+  }
+  if (!VALID_ROLES.includes(role)) {
+    return { error: 'Role must be USER, ADMIN, or SUPER_ADMIN' };
+  }
+  if (requirePassword && password.length < 8) {
+    return { error: 'Password must be at least 8 characters' };
+  }
+  if (password && password.length < 8) {
+    return { error: 'Password must be at least 8 characters' };
+  }
+
+  return { name, email, role, password: password || null };
+}
+
+async function countOtherSuperAdmins(excludeUserId) {
+  const countRes = await db.query(
+    `SELECT COUNT(*)::int AS total FROM users WHERE role = 'SUPER_ADMIN' AND id <> $1`,
+    [excludeUserId]
+  );
+  return countRes.rows[0]?.total ?? 0;
+}
+
+async function updateAdminUser(actor, targetId, body) {
+  const validated = validateUserPayload(body, { requirePassword: false });
+  if (validated.error) return { status: 400, body: { error: validated.error } };
+
+  const { name, email, role, password } = validated;
+
+  const { rows } = await db.query(
+    'SELECT id, role FROM users WHERE id = $1 LIMIT 1',
+    [targetId]
+  );
+  const existing = rows[0];
+  if (!existing) {
+    return { status: 404, body: { error: 'User not found' } };
+  }
+
+  if (!canEditUser(actor, existing)) {
+    return { status: 403, body: { error: 'You cannot edit this user' } };
+  }
+
+  const roleError = assertRoleChangeAllowed(actor, existing, role);
+  if (roleError) {
+    return { status: 400, body: { error: roleError } };
+  }
+
+  if (existing.role === 'SUPER_ADMIN' && role !== 'SUPER_ADMIN') {
+    if ((await countOtherSuperAdmins(targetId)) === 0) {
+      return { status: 400, body: { error: 'Cannot demote the last super admin' } };
+    }
+  }
+
+  const emailTaken = await db.query(
+    'SELECT id FROM users WHERE email = $1 AND id <> $2 LIMIT 1',
+    [email, targetId]
+  );
+  if (emailTaken.rows[0]) {
+    return { status: 409, body: { error: 'Email already in use' } };
+  }
+
+  if (password) {
+    const passwordHash = await bcrypt.hash(password, 10);
+    const { rows: updated } = await db.query(
+      `UPDATE users SET name = $1, email = $2, role = $3, password_hash = $4
+       WHERE id = $5
+       RETURNING id, name, email, role, created_at AS "createdAt"`,
+      [name, email, role, passwordHash, targetId]
+    );
+    return { status: 200, body: updated[0] };
+  }
+
+  const { rows: updated } = await db.query(
+    `UPDATE users SET name = $1, email = $2, role = $3
+     WHERE id = $4
+     RETURNING id, name, email, role, created_at AS "createdAt"`,
+    [name, email, role, targetId]
+  );
+  return { status: 200, body: updated[0] };
+}
+
+async function createAdminUser(actor, body) {
+  const validated = validateUserPayload(body, { requirePassword: true });
+  if (validated.error) return { status: 400, body: { error: validated.error } };
+
+  const { name, email, role, password } = validated;
+
+  if (!canAssignRole(actor.role, role)) {
+    return { status: 403, body: { error: 'You cannot assign that role' } };
+  }
+
+  const existing = await db.query('SELECT id FROM users WHERE email = $1 LIMIT 1', [email]);
+  if (existing.rows[0]) {
+    return { status: 409, body: { error: 'Email already registered' } };
+  }
+
+  const userId = randomUUID();
+  const passwordHash = await bcrypt.hash(password, 10);
+  const { rows } = await db.query(
+    `INSERT INTO users (id, name, email, password_hash, role, created_at)
+     VALUES ($1, $2, $3, $4, $5, NOW())
+     RETURNING id, name, email, role, created_at AS "createdAt"`,
+    [userId, name, email, passwordHash, role]
+  );
+  return { status: 201, body: rows[0] };
+}
+
 async function deleteAdminUser(actor, targetId) {
   const { rows } = await db.query(
     'SELECT id, role FROM users WHERE id = $1 LIMIT 1',
@@ -150,14 +274,8 @@ async function deleteAdminUser(actor, targetId) {
     return { status: 403, body: { error: message } };
   }
 
-  if (existing.role === 'SUPER_ADMIN') {
-    const countRes = await db.query(
-      `SELECT COUNT(*)::int AS total FROM users WHERE role = 'SUPER_ADMIN' AND id <> $1`,
-      [targetId]
-    );
-    if ((countRes.rows[0]?.total ?? 0) === 0) {
-      return { status: 400, body: { error: 'Cannot delete the last super admin' } };
-    }
+  if (existing.role === 'SUPER_ADMIN' && (await countOtherSuperAdmins(targetId)) === 0) {
+    return { status: 400, body: { error: 'Cannot delete the last super admin' } };
   }
 
   await db.query('DELETE FROM users WHERE id = $1', [targetId]);
@@ -340,7 +458,7 @@ async function tryHandle(method, path, query, authHeader, body = null) {
     }
   }
 
-  if (method === 'DELETE') {
+  if (method === 'PUT' || method === 'DELETE') {
     const targetId = parseAdminUserId(path);
     if (targetId) {
       const auth = await requireUser(authHeader);
@@ -348,8 +466,22 @@ async function tryHandle(method, path, query, authHeader, body = null) {
       if (!isStaff(auth.user.role)) {
         return { status: 403, body: { error: 'Admin access required' } };
       }
+      if (method === 'PUT') {
+        if (!body) return { status: 400, body: { error: 'Request body required' } };
+        return updateAdminUser(auth.user, targetId, body);
+      }
       return deleteAdminUser(auth.user, targetId);
     }
+  }
+
+  if (method === 'POST' && adminUsersListPath(path)) {
+    const auth = await requireUser(authHeader);
+    if (auth.error) return auth.error;
+    if (!isStaff(auth.user.role)) {
+      return { status: 403, body: { error: 'Admin access required' } };
+    }
+    if (!body) return { status: 400, body: { error: 'Request body required' } };
+    return createAdminUser(auth.user, body);
   }
 
   if (method !== 'GET') return null;

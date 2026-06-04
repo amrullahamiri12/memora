@@ -92,9 +92,7 @@ module.exports = async (req, res) => {
     }
 
     const body =
-      req.method === 'POST' && match(p, '/admin/flashcards/import')
-        ? await parseBody(req)
-        : null;
+      req.method === 'POST' || req.method === 'PUT' ? await parseBody(req) : null;
 
     const fast = await require('../server/lib/fastApi').tryHandle(
       req.method,
