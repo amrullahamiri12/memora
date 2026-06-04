@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { subjectAccent } from '../utils/studyStorage';
 
 export default function SubjectPicker({
@@ -7,7 +7,11 @@ export default function SubjectPicker({
   onChange,
   disabled = false,
 }) {
-  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(0);
+  const rootRef = useRef(null);
+  const listId = useId();
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const selectedSubjects = useMemo(
@@ -18,11 +22,26 @@ export default function SubjectPicker({
     () => subjects.filter((s) => !selectedSet.has(s.id)),
     [subjects, selectedSet]
   );
-  const filteredUnselected = useMemo(() => {
-    const q = search.trim().toLowerCase();
+  const filteredOptions = useMemo(() => {
+    const q = query.trim().toLowerCase();
     if (!q) return unselected;
     return unselected.filter((s) => s.name.toLowerCase().includes(q));
-  }, [unselected, search]);
+  }, [unselected, query]);
+
+  useEffect(() => {
+    setHighlightIndex(0);
+  }, [query, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [open]);
 
   if (!subjects.length) {
     return <p className="text-sm text-[var(--text-muted)]">No subjects available yet.</p>;
@@ -31,7 +50,8 @@ export default function SubjectPicker({
   const addSubject = (id) => {
     if (disabled || !id || selectedSet.has(id)) return;
     onChange([...selectedIds, id]);
-    setSearch('');
+    setQuery('');
+    setOpen(unselected.length > 1);
   };
 
   const removeSubject = (id) => {
@@ -42,6 +62,8 @@ export default function SubjectPicker({
   const selectAll = () => {
     if (disabled) return;
     onChange(subjects.map((s) => s.id));
+    setQuery('');
+    setOpen(false);
   };
 
   const clearAll = () => {
@@ -54,6 +76,27 @@ export default function SubjectPicker({
     const topics = `${subject.topicCount} topic${subject.topicCount !== 1 ? 's' : ''}`;
     if (subject.totalCards != null) return `${topics} · ${subject.totalCards} cards`;
     return topics;
+  };
+
+  const onKeyDown = (e) => {
+    if (!open && (e.key === 'ArrowDown' || e.key === 'Enter')) {
+      setOpen(true);
+      return;
+    }
+    if (!open) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightIndex((i) => Math.min(i + 1, filteredOptions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' && filteredOptions[highlightIndex]) {
+      e.preventDefault();
+      addSubject(filteredOptions[highlightIndex].id);
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
   };
 
   return (
@@ -87,48 +130,90 @@ export default function SubjectPicker({
       </div>
 
       {unselected.length > 0 && (
-        <div className="space-y-2">
-          {subjects.length > 6 && (
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              disabled={disabled}
-              placeholder="Search subjects…"
-              className="input-field text-sm"
-              aria-label="Search subjects to add"
-            />
-          )}
+        <div ref={rootRef} className="relative">
+          <label htmlFor="subject-combobox" className="sr-only">
+            Search and add subjects
+          </label>
           <div className="relative">
-            <label htmlFor="subject-add" className="sr-only">
-              Add a subject
-            </label>
-            <select
-              id="subject-add"
-              disabled={disabled || filteredUnselected.length === 0}
-              onChange={(e) => addSubject(e.target.value)}
-              defaultValue=""
-              className="input-field w-full appearance-none pr-10 text-sm"
-            >
-              <option value="" disabled>
-                {filteredUnselected.length === 0
-                  ? 'No matches — try another search'
-                  : '+ Add a subject…'}
-              </option>
-              {filteredUnselected.map((subject) => (
-                <option key={subject.id} value={subject.id}>
-                  {subject.name}
-                  {subject.topicCount != null ? ` (${subject.topicCount} topics)` : ''}
-                </option>
-              ))}
-            </select>
-            <span
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-              aria-hidden
-            >
-              ▾
-            </span>
+            <input
+              id="subject-combobox"
+              type="text"
+              role="combobox"
+              aria-expanded={open}
+              aria-controls={listId}
+              aria-autocomplete="list"
+              autoComplete="off"
+              disabled={disabled}
+              value={query}
+              placeholder="Search or pick a subject…"
+              className="input-field w-full pr-9 text-sm"
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setOpen(true);
+              }}
+              onFocus={() => setOpen(true)}
+              onKeyDown={onKeyDown}
+            />
+            {query && !disabled && (
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-1.5 text-sm text-[var(--text-muted)] hover:bg-[var(--accent-glow)] hover:text-[var(--accent)]"
+                aria-label="Clear search"
+                onClick={() => {
+                  setQuery('');
+                  setOpen(true);
+                }}
+              >
+                ×
+              </button>
+            )}
           </div>
+
+          {open && (
+            <ul
+              id={listId}
+              role="listbox"
+              className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-[var(--border-strong)] bg-[var(--surface-solid)] py-1 shadow-lg"
+            >
+              {filteredOptions.length === 0 ? (
+                <li className="px-3 py-2.5 text-sm text-[var(--text-muted)]">No matching subjects</li>
+              ) : (
+                filteredOptions.map((subject, index) => {
+                  const accent = subjectAccent(subject.name);
+                  const meta = topicLabel(subject);
+                  const active = index === highlightIndex;
+                  return (
+                    <li key={subject.id} role="option" aria-selected={active}>
+                      <button
+                        type="button"
+                        className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition ${
+                          active ? 'bg-[var(--accent-glow)]' : 'hover:bg-[var(--accent-glow)]/60'
+                        }`}
+                        onMouseEnter={() => setHighlightIndex(index)}
+                        onClick={() => addSubject(subject.id)}
+                      >
+                        <span
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+                          style={{ background: accent.gradient }}
+                          aria-hidden
+                        >
+                          {subject.name.charAt(0)}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block font-medium text-[var(--text-heading)]">
+                            {subject.name}
+                          </span>
+                          {meta && (
+                            <span className="block text-xs text-[var(--text-muted)]">{meta}</span>
+                          )}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          )}
         </div>
       )}
 
@@ -176,7 +261,9 @@ export default function SubjectPicker({
         </ul>
       ) : (
         <p className="rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-solid)]/60 px-4 py-3 text-center text-sm text-[var(--text-muted)]">
-          Pick subjects from the menu above
+          {unselected.length > 0
+            ? 'Type to search, then click a subject to add it'
+            : 'All subjects selected'}
         </p>
       )}
     </div>

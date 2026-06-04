@@ -107,7 +107,7 @@ export default function Register() {
                 Subjects to practice
               </p>
               <p className="mb-3 text-xs text-[var(--text-muted)]">
-                Add one or more from the list. You can enroll in more later from your dashboard.
+                Search and click subjects to add them. You can enroll in more later from your dashboard.
               </p>
               {catalogLoading ? (
                 <p className="text-sm text-[var(--text-muted)]">Loading subjects…</p>
