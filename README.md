@@ -219,7 +219,7 @@ flashcards/
 
 ## API Reference
 
-**Interactive docs (Swagger UI):** [`/api-docs.html`](/api-docs.html) when the app is running (e.g. [memora-phi.vercel.app/api-docs.html](https://memora-phi.vercel.app/api-docs.html)).
+**Interactive docs (Swagger UI):** [`/api-docs.html`](/api-docs.html) when the app is running (e.g. [memora.cards/api-docs.html](https://memora.cards/api-docs.html)). The landing page at `/` links here for guests.
 
 **OpenAPI 3 spec:** [`docs/openapi.yaml`](docs/openapi.yaml) (also served at `/openapi.yaml` from the client build).
 

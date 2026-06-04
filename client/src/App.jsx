@@ -17,12 +17,19 @@ import AccountPage from './pages/AccountPage';
 import AdminFlashcards from './pages/admin/AdminFlashcards';
 import AdminSubjects from './pages/admin/AdminSubjects';
 import AdminUsers from './pages/admin/AdminUsers';
+import Landing from './pages/Landing';
 
-function HomeRedirect() {
+function Home() {
   const { user, loading } = useAuth();
   const preview = useStudentPreview();
-  if (loading) return <Spinner />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+  if (!user) return <Landing />;
   if (isStaff(user.role) && !preview) {
     return <Navigate to="/admin" replace />;
   }
@@ -43,7 +50,7 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
         <Routes>
-          <Route path="/" element={<HomeRedirect />} />
+          <Route path="/" element={<Home />} />
           <Route
             path="/login"
             element={

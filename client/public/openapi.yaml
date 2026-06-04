@@ -12,13 +12,16 @@ info:
 
     **Vercel fast paths** (lightweight `pg`, avoid Express cold start): health, auth login/register/me, subjects catalog, GET subjects/profile, GET admin users/subjects/flashcards, POST flashcards import, POST/PUT/DELETE admin users. Other routes may load Express on first request.
 
-    Interactive docs: `/api-docs.html` · Raw spec: `/openapi.yaml`
+    Interactive docs: https://memora.cards/api-docs.html · Raw spec: `/openapi.yaml`
   version: 1.0.0
   contact:
     name: Memora
+    url: https://memora.cards/
 servers:
+  - url: https://memora.cards/api
+    description: Production (memora.cards)
   - url: /api
-    description: Production / same-origin (Vercel or Vite proxy)
+    description: Same-origin (deployed app or Vite proxy)
   - url: http://localhost:5001/api
     description: Local Express dev server
 
