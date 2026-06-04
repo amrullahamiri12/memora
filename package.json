@@ -4,12 +4,23 @@
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "setup": "npm install --prefix server && npm install --prefix client && npm run db:migrate --prefix server && npm run db:seed --prefix server",
+    "postinstall": "npm run db:generate --prefix server",
     "build:vercel": "cd server && npx prisma generate && npx prisma db push --skip-generate && if [ \"$SEED_ON_BUILD\" = \"true\" ]; then node prisma/seed.js; fi && cd ../client && npm run build"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.2.0",
+    "jsonwebtoken": "^9.0.3",
     "serverless-http": "^3.2.0"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "prisma": "^6.19.3"
   }
 }
