@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Layout from '../../components/Layout';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
@@ -20,6 +20,27 @@ export default function AdminSubjects() {
   const [newTopic, setNewTopic] = useState('');
   const [editingTopic, setEditingTopic] = useState(null);
   const [editTopicName, setEditTopicName] = useState('');
+  const [collapsedIds, setCollapsedIds] = useState(() => new Set());
+
+  const isExpanded = useCallback((subjectId) => !collapsedIds.has(subjectId), [collapsedIds]);
+
+  const toggleSubject = (subjectId) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(subjectId)) next.delete(subjectId);
+      else next.add(subjectId);
+      return next;
+    });
+  };
+
+  const expandSubject = (subjectId) => {
+    setCollapsedIds((prev) => {
+      if (!prev.has(subjectId)) return prev;
+      const next = new Set(prev);
+      next.delete(subjectId);
+      return next;
+    });
+  };
 
   const loadSubjects = () => {
     setLoading(true);
@@ -154,9 +175,13 @@ export default function AdminSubjects() {
         <EmptyState message="No subjects yet. Add one above or import flashcards via CSV." />
       ) : (
         <div className="space-y-4">
-          {subjects.map((subject) => (
+          {subjects.map((subject) => {
+            const expanded = isExpanded(subject.id);
+            return (
             <Card key={subject.id}>
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div
+                className={`flex flex-wrap items-center justify-between gap-3 ${expanded ? 'mb-4' : ''}`}
+              >
                 {editingSubject === subject.id ? (
                   <div className="flex flex-1 flex-wrap gap-2">
                     <Input
@@ -172,11 +197,40 @@ export default function AdminSubjects() {
                     </Button>
                   </div>
                 ) : (
-                  <div>
-                    <h2 className="text-lg font-semibold text-[var(--text-heading)]">{subject.name}</h2>
-                    <p className="text-sm text-[var(--text-muted)]">
-                      {subject.topicCount} topics · {subject.cardCount} cards
-                    </p>
+                  <div className="flex min-w-0 flex-1 items-start gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleSubject(subject.id)}
+                      className="mt-0.5 shrink-0 rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--surface-solid)] hover:text-[var(--text-heading)]"
+                      aria-expanded={expanded}
+                      aria-label={expanded ? `Collapse ${subject.name}` : `Expand ${subject.name}`}
+                    >
+                      <svg
+                        className={`h-5 w-5 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        aria-hidden
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleSubject(subject.id)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <h2 className="text-lg font-semibold text-[var(--text-heading)]">{subject.name}</h2>
+                      <p className="text-sm text-[var(--text-muted)]">
+                        {subject.topicCount} topics · {subject.cardCount} cards
+                        {!expanded && subject.topics.length > 0 && (
+                          <span className="text-[var(--text-muted)]"> · click to expand</span>
+                        )}
+                      </p>
+                    </button>
                   </div>
                 )}
                 {editingSubject !== subject.id && (
@@ -186,6 +240,7 @@ export default function AdminSubjects() {
                       onClick={() => {
                         setEditingSubject(subject.id);
                         setEditSubjectName(subject.name);
+                        expandSubject(subject.id);
                       }}
                       className="text-sm font-medium text-[var(--accent)] hover:underline"
                     >
@@ -202,6 +257,8 @@ export default function AdminSubjects() {
                 )}
               </div>
 
+              {expanded && (
+              <>
               <div className="space-y-2">
                 {subject.topics.map((topic) => (
                   <div
@@ -234,6 +291,7 @@ export default function AdminSubjects() {
                             onClick={() => {
                               setEditingTopic(topic.id);
                               setEditTopicName(topic.name);
+                              expandSubject(subject.id);
                             }}
                             className="text-xs font-medium text-[var(--accent)] hover:underline"
                           >
@@ -279,14 +337,20 @@ export default function AdminSubjects() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => setAddingTopicFor(subject.id)}
+                  onClick={() => {
+                    expandSubject(subject.id);
+                    setAddingTopicFor(subject.id);
+                  }}
                   className="mt-3 text-sm font-medium text-[var(--accent)] hover:underline"
                 >
                   + Add topic
                 </button>
               )}
+              </>
+              )}
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </Layout>
