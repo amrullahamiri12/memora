@@ -9,7 +9,12 @@ fi
 npm run sync:openapi
 
 cd server
-npx prisma generate
+# Vercel runs Linux only — avoid bundling macOS Prisma engine binaries
+if [ -n "${VERCEL:-}" ]; then
+  PRISMA_CLI_BINARY_TARGETS=rhel-openssl-3.0.x npx prisma generate
+else
+  npx prisma generate
+fi
 if [ -n "${DATABASE_URL:-}" ]; then
   npx prisma db push --skip-generate
 fi

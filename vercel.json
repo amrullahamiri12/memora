@@ -11,7 +11,7 @@
     "api/index.js": {
       "maxDuration": 60,
       "memory": 1024,
-      "excludeFiles": "{server/node_modules/@prisma/engines/**/libquery_engine-darwin*,server/node_modules/@prisma/engines/**/schema-engine-darwin*,server/node_modules/.prisma/client/libquery_engine-darwin*,server/node_modules/prisma/**/libquery_engine-darwin*,server/node_modules/prisma/**/schema-engine-darwin*}"
+      "excludeFiles": "{**/libquery_engine-darwin*,**/schema-engine-darwin*}"
     }
   }
 }
