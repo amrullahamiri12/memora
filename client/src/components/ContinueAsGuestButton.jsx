@@ -15,7 +15,7 @@ export default function ContinueAsGuestButton({ className = 'w-full' }) {
     setLoading(true);
     try {
       await continueAsGuest();
-      navigate('/dashboard');
+      navigate('/guest/setup');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -40,7 +40,7 @@ export default function ContinueAsGuestButton({ className = 'w-full' }) {
         Continue as guest
       </Button>
       <p className="mt-2 text-center text-xs text-[var(--text-muted)]">
-        Try the app with no sign-up. Create an account later to keep your progress.
+        Try the app with no sign-up — you&apos;ll choose subjects next. Create an account later to keep progress.
       </p>
     </div>
   );

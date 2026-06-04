@@ -16,9 +16,8 @@ function withGuestFlag(user) {
 }
 
 async function createGuest() {
-  const subjectsRes = await db.query('SELECT id FROM subjects ORDER BY name ASC');
-  const subjectIds = subjectsRes.rows.map((r) => r.id);
-  if (subjectIds.length === 0) {
+  const subjectsRes = await db.query('SELECT id FROM subjects LIMIT 1');
+  if (!subjectsRes.rows[0]) {
     return {
       status: 503,
       body: { error: 'No subjects available yet. Please try again later.' },
@@ -28,37 +27,17 @@ async function createGuest() {
   const userId = randomUUID();
   const email = `guest-${userId}${GUEST_EMAIL_SUFFIX}`;
   const passwordHash = await bcrypt.hash(`${randomUUID()}${randomUUID()}`, 10);
-  const { getPool } = require('./pg');
-  const client = await getPool().connect();
-
-  try {
-    await client.query('BEGIN');
-    const { rows } = await client.query(
-      `INSERT INTO users (id, name, email, password_hash, role, created_at)
-       VALUES ($1, $2, $3, $4, 'USER', NOW())
-       RETURNING id, name, email, role`,
-      [userId, 'Guest', email, passwordHash]
-    );
-    for (const subjectId of subjectIds) {
-      await client.query(
-        `INSERT INTO user_subjects (id, user_id, subject_id, created_at)
-         VALUES ($1, $2, $3, NOW())
-         ON CONFLICT (user_id, subject_id) DO NOTHING`,
-        [randomUUID(), userId, subjectId]
-      );
-    }
-    await client.query('COMMIT');
-    const user = withGuestFlag(rows[0]);
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-    });
-    return { status: 201, body: { token, user } };
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  const { rows } = await db.query(
+    `INSERT INTO users (id, name, email, password_hash, role, created_at)
+     VALUES ($1, $2, $3, $4, 'USER', NOW())
+     RETURNING id, name, email, role`,
+    [userId, 'Guest', email, passwordHash]
+  );
+  const user = withGuestFlag(rows[0]);
+  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  });
+  return { status: 201, body: { token, user } };
 }
 
 async function upgradeGuest(userId, { name, email, password }) {

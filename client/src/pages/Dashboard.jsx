@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/ui/PageHeader';
@@ -16,6 +16,7 @@ import GuestBanner from '../components/GuestBanner';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [subjects, setSubjects] = useState([]);
   const [streak, setStreak] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -42,6 +43,12 @@ export default function Dashboard() {
   useEffect(() => {
     loadDashboard();
   }, []);
+
+  useEffect(() => {
+    if (!loading && isGuestUser(user) && subjects.length === 0) {
+      navigate('/guest/setup', { replace: true });
+    }
+  }, [loading, user, subjects.length, navigate]);
 
   return (
     <Layout>

@@ -18,6 +18,7 @@ import AdminFlashcards from './pages/admin/AdminFlashcards';
 import AdminSubjects from './pages/admin/AdminSubjects';
 import AdminUsers from './pages/admin/AdminUsers';
 import Landing from './pages/Landing';
+import GuestSetupPage from './pages/GuestSetupPage';
 
 function Home() {
   const { user, loading } = useAuth();
@@ -68,6 +69,14 @@ export default function App() {
             }
           />
           <Route path="/dashboard" element={<DashboardRoute />} />
+          <Route
+            path="/guest/setup"
+            element={
+              <StudentViewRoute>
+                <GuestSetupPage />
+              </StudentViewRoute>
+            }
+          />
           <Route
             path="/subjects/:id"
             element={
