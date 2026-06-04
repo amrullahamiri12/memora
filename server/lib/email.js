@@ -6,7 +6,19 @@ function appUrl() {
 }
 
 function fromAddress() {
-  return process.env.EMAIL_FROM || 'Memora <onboarding@resend.dev>';
+  const configured = process.env.EMAIL_FROM?.trim();
+  if (configured) return configured;
+  return 'Memora <onboarding@resend.dev>';
+}
+
+function formatResendError(text) {
+  if (!text) return 'Email provider rejected the request';
+  try {
+    const data = JSON.parse(text);
+    return data.message || data.error || text;
+  } catch {
+    return text.slice(0, 200);
+  }
 }
 
 async function sendEmail({ to, subject, html }) {
@@ -32,8 +44,9 @@ async function sendEmail({ to, subject, html }) {
 
   if (!res.ok) {
     const text = await res.text();
-    console.error('[email] Resend error:', res.status, text);
-    return { ok: false, error: text };
+    const message = formatResendError(text);
+    console.error('[email] Resend error:', res.status, message);
+    return { ok: false, status: res.status, error: message };
   }
   return { ok: true };
 }
@@ -62,9 +75,24 @@ function isEmailConfigured() {
   return Boolean(process.env.RESEND_API_KEY);
 }
 
+function emailSendFailureMessage(emailResult) {
+  if (!emailResult) return 'Could not send email. Try again later.';
+  if (emailResult.skipped) return 'Email delivery is not configured on the server';
+  const msg = emailResult.error || '';
+  if (emailResult.status === 403 && /domain|verify|not verified/i.test(msg)) {
+    return 'Email domain is not verified in Resend yet. Use onboarding@resend.dev or verify memora.cards in Resend.';
+  }
+  if (/only send.*your own email|testing emails/i.test(msg)) {
+    return 'Resend test mode: add and verify memora.cards in Resend, or send to your Resend account email only.';
+  }
+  return msg || 'Could not send email. Try again later.';
+}
+
 module.exports = {
   appUrl,
   isEmailConfigured,
+  formatResendError,
+  emailSendFailureMessage,
   sendVerificationEmail,
   sendPasswordResetEmail,
 };

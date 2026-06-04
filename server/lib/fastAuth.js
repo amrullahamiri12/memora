@@ -3,7 +3,12 @@ const bcrypt = require('bcryptjs');
 const db = require('./pg');
 const { isGuestEmail, createGuest, upgradeGuest } = require('./guestAuth');
 const { hashToken, generateToken, verificationExpiry, resetExpiry } = require('./authTokens');
-const { isEmailConfigured, sendVerificationEmail, sendPasswordResetEmail } = require('./email');
+const {
+  isEmailConfigured,
+  emailSendFailureMessage,
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+} = require('./email');
 const { verifyGoogleCredential } = require('./googleAuth');
 const {
   USER_PUBLIC_COLUMNS,
@@ -172,7 +177,7 @@ async function resendVerification(userId) {
     return {
       status: 503,
       body: {
-        error: 'Could not send verification email. Try again later.',
+        error: emailSendFailureMessage(emailResult),
         emailConfigured: true,
         emailSent: false,
       },
