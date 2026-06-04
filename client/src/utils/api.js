@@ -56,7 +56,9 @@ export async function api(path, options = {}) {
       data.errors?.[0]?.msg ||
       (res.status === 403
         ? 'Server unreachable — on macOS, port 5000 is used by AirPlay. The API runs on port 5001.'
-        : `Request failed (${res.status})`);
+        : res.status === 504
+          ? 'Server timed out. Wait a few seconds and try again.'
+          : `Request failed (${res.status})`);
     throw new Error(message);
   }
 

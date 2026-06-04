@@ -40,8 +40,16 @@ function match(p, suffix) {
   return p === suffix || p.endsWith(suffix);
 }
 
+function parseQuery(url) {
+  const i = (url || '').indexOf('?');
+  if (i === -1) return {};
+  return Object.fromEntries(new URLSearchParams(url.slice(i + 1)));
+}
+
 module.exports = async (req, res) => {
   const p = path(req);
+  const query = parseQuery(req.url);
+  const authHeader = req.headers.authorization || req.headers.Authorization || '';
 
   if (match(p, '/health')) {
     try {
@@ -82,6 +90,14 @@ module.exports = async (req, res) => {
       const rows = await require('../server/lib/fastAuth').catalog();
       return json(res, 200, rows);
     }
+
+    const fast = await require('../server/lib/fastApi').tryHandle(
+      req.method,
+      p,
+      query,
+      authHeader
+    );
+    if (fast) return json(res, fast.status, fast.body);
   } catch (err) {
     console.error('API error:', p, err);
     return json(res, 500, { error: err.message || 'Request failed' });
