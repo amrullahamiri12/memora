@@ -4,12 +4,11 @@
   "description": "Flashcard app API server",
   "main": "index.js",
   "scripts": {
-    "dev": "prisma generate && nodemon index.js",
+    "dev": "npx prisma generate && nodemon index.js",
     "start": "node index.js",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "npx prisma migrate dev",
     "db:seed": "node prisma/seed.js",
-    "db:generate": "prisma generate",
-    "postinstall": "prisma generate"
+    "db:generate": "npx prisma generate"
   },
   "keywords": [],
   "author": "",
@@ -26,10 +25,10 @@
     "express-rate-limit": "^8.5.2",
     "express-validator": "^7.3.2",
     "helmet": "^8.2.0",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "prisma": "^6.19.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14",
-    "prisma": "^6.19.3"
+    "nodemon": "^3.1.14"
   }
 }
