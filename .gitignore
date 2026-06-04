@@ -5,6 +5,7 @@ dist/
 *.log
 .DS_Store
 .vercel
+.env.vercel*
 
 # SQLite (local dev only)
 server/prisma/*.db

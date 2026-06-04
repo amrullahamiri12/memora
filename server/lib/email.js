@@ -58,8 +58,13 @@ async function sendPasswordResetEmail(to, token) {
   return sendEmail({ to, subject: 'Reset your Memora password', html });
 }
 
+function isEmailConfigured() {
+  return Boolean(process.env.RESEND_API_KEY);
+}
+
 module.exports = {
   appUrl,
+  isEmailConfigured,
   sendVerificationEmail,
   sendPasswordResetEmail,
 };

@@ -54,8 +54,15 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const user = await register(name.trim(), email, password, subjectIds);
-      navigate(user.emailVerified === false ? '/verify-email' : '/dashboard');
+      const data = await register(name.trim(), email, password, subjectIds);
+      const user = data.user;
+      if (user.emailVerified === false) {
+        navigate('/verify-email', {
+          state: { emailSent: data.emailSent, emailConfigured: data.emailConfigured },
+        });
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message);
     } finally {

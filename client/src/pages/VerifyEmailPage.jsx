@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { api } from '../utils/api';
 import Layout from '../components/Layout';
 import PageHeader from '../components/ui/PageHeader';
 import Button from '../components/ui/Button';
@@ -10,12 +11,28 @@ import { useAuth } from '../context/AuthContext';
 export default function VerifyEmailPage() {
   const { user, resendVerification, verifyEmail } = useAuth();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [emailConfigured, setEmailConfigured] = useState(location.state?.emailConfigured);
   const token = searchParams.get('token');
+
+  useEffect(() => {
+    api('/auth/config')
+      .then((cfg) => setEmailConfigured(cfg.emailConfigured))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (location.state?.emailConfigured === false || location.state?.emailSent === false) {
+      setError(
+        'Your account was created, but verification email is not set up on the server yet. Ask an admin to verify your email or try again later.'
+      );
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (!token) return;
@@ -68,6 +85,12 @@ export default function VerifyEmailPage() {
         {verifying && <p className="text-sm text-[var(--text-muted)]">Verifying…</p>}
         {error && <Alert>{error}</Alert>}
         {message && <Alert type="success">{message}</Alert>}
+        {emailConfigured === false && !error && (
+          <Alert>
+            Email delivery is not configured yet. You cannot receive a verification link until the
+            site owner adds Resend to production.
+          </Alert>
+        )}
         {!token && (
           <>
             <p className="mb-4 text-sm text-[var(--text-muted)]">
@@ -75,7 +98,13 @@ export default function VerifyEmailPage() {
               {user ? ', or resend it below.' : '.'}
             </p>
             {user ? (
-              <Button type="button" className="w-full" loading={loading} onClick={handleResend}>
+              <Button
+                type="button"
+                className="w-full"
+                loading={loading}
+                disabled={emailConfigured === false}
+                onClick={handleResend}
+              >
                 Resend verification email
               </Button>
             ) : (

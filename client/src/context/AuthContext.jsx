@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ name, email, password, subjectIds }),
     });
     setUser(applyAuthResponse(data));
-    return data.user;
+    return data;
   };
 
   const continueAsGuest = async () => {

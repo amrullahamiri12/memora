@@ -102,6 +102,15 @@ Copy [`client/.env.example`](client/.env.example) to `client/.env` for local Goo
 
 **Google Cloud Console:** add authorized JavaScript origins `http://localhost:5173` and `https://memora.cards`.
 
+**Vercel (production):** after `npx vercel link`, sync env vars and redeploy:
+
+```bash
+RESEND_API_KEY=re_xxx GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com ./scripts/sync-vercel-auth-env.sh
+npx vercel --prod
+```
+
+`APP_URL` and `EMAIL_FROM` can be set without the script; `RESEND_API_KEY` and `VITE_GOOGLE_CLIENT_ID` require a redeploy after adding.
+
 New email/password users must verify before study **writes** (progress, enroll). Guests and existing backfilled users are not blocked.
 
 ## Deploy to Vercel

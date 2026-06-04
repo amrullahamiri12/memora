@@ -163,6 +163,11 @@ module.exports = async (req, res) => {
       return json(res, result.status, result.body);
     }
 
+    if (req.method === 'GET' && match(p, '/auth/config')) {
+      const result = require('../server/lib/fastAuth').authConfig();
+      return json(res, result.status, result.body);
+    }
+
     if (req.method === 'GET' && match(p, '/auth/me')) {
       const h = req.headers.authorization || req.headers.Authorization || '';
       if (!h.startsWith('Bearer ')) {

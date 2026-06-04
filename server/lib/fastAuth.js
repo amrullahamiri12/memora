@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const db = require('./pg');
 const { isGuestEmail, createGuest, upgradeGuest } = require('./guestAuth');
 const { hashToken, generateToken, verificationExpiry, resetExpiry } = require('./authTokens');
-const { sendVerificationEmail, sendPasswordResetEmail } = require('./email');
+const { isEmailConfigured, sendVerificationEmail, sendPasswordResetEmail } = require('./email');
 const { verifyGoogleCredential } = require('./googleAuth');
 const {
   USER_PUBLIC_COLUMNS,
@@ -105,8 +105,11 @@ async function register({ name, email, password, subjectIds }) {
       );
     }
     await client.query('COMMIT');
-    await sendVerificationEmail(trimmedEmail, verifyToken);
-    return authCreated(rows[0]);
+    const emailResult = await sendVerificationEmail(trimmedEmail, verifyToken);
+    const created = authCreated(rows[0]);
+    created.body.emailSent = Boolean(emailResult?.ok);
+    created.body.emailConfigured = isEmailConfigured();
+    return created;
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -153,8 +156,32 @@ async function resendVerification(userId) {
   }
 
   const token = await assignVerificationToken(userId);
-  await sendVerificationEmail(user.email, token);
-  return { status: 200, body: { message: 'Verification email sent' } };
+  const emailResult = await sendVerificationEmail(user.email, token);
+  if (!isEmailConfigured()) {
+    return {
+      status: 503,
+      body: {
+        error: 'Email delivery is not configured on the server',
+        code: 'EMAIL_NOT_CONFIGURED',
+        emailConfigured: false,
+        emailSent: false,
+      },
+    };
+  }
+  if (!emailResult?.ok) {
+    return {
+      status: 503,
+      body: {
+        error: 'Could not send verification email. Try again later.',
+        emailConfigured: true,
+        emailSent: false,
+      },
+    };
+  }
+  return {
+    status: 200,
+    body: { message: 'Verification email sent', emailConfigured: true, emailSent: true },
+  };
 }
 
 async function forgotPassword(email) {
@@ -291,6 +318,17 @@ async function me(userId) {
   return { status: 200, body: { user: publicUser(user) } };
 }
 
+function authConfig() {
+  return {
+    status: 200,
+    body: {
+      emailConfigured: isEmailConfigured(),
+      googleConfigured: Boolean(process.env.GOOGLE_CLIENT_ID),
+      appUrl: require('./email').appUrl(),
+    },
+  };
+}
+
 async function catalog() {
   const { rows } = await db.query(
     `SELECT s.id, s.name, COUNT(t.id)::int AS "topicCount"
@@ -311,6 +349,7 @@ module.exports = {
   resetPassword,
   loginWithGoogle,
   me,
+  authConfig,
   catalog,
   createGuest,
   upgradeGuest,

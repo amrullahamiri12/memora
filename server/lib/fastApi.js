@@ -12,6 +12,7 @@ const {
 const {
   USER_PUBLIC_COLUMNS,
   isEmailVerified,
+  publicUser,
   verificationRequiredResponse,
 } = require('./authUser');
 
@@ -405,6 +406,23 @@ async function deleteAdminUser(actor, targetId) {
   return { status: 200, body: { message: 'User deleted' } };
 }
 
+async function verifyAdminUserEmail(actor, targetId) {
+  if (actor.role !== 'SUPER_ADMIN') {
+    return { status: 403, body: { error: 'Super admin access required' } };
+  }
+
+  const { rows } = await db.query(
+    `UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW()),
+                      verification_token_hash = NULL,
+                      verification_token_expires = NULL
+     WHERE id = $1
+     RETURNING ${USER_PUBLIC_COLUMNS}`,
+    [targetId]
+  );
+  if (!rows[0]) return { status: 404, body: { error: 'User not found' } };
+  return { status: 200, body: { message: 'Email marked as verified', user: publicUser(rows[0]) } };
+}
+
 async function subjectTopics(user, subjectId, query) {
   const subjectRes = await db.query(
     'SELECT id, name FROM subjects WHERE id = $1 LIMIT 1',
@@ -788,6 +806,18 @@ async function tryHandle(method, path, query, authHeader, body = null) {
     }
   }
 
+  if (method === 'POST') {
+    const verifyTargetId = parseAdminUserVerifyPath(path);
+    if (verifyTargetId) {
+      const auth = await requireUser(authHeader);
+      if (auth.error) return auth.error;
+      if (!isStaff(auth.user.role)) {
+        return { status: 403, body: { error: 'Admin access required' } };
+      }
+      return verifyAdminUserEmail(auth.user, verifyTargetId);
+    }
+  }
+
   if (method === 'PUT' || method === 'DELETE') {
     const targetId = parseAdminUserId(path);
     if (targetId) {
@@ -911,6 +941,11 @@ function match(path, suffix) {
 function adminUsersListPath(path) {
   const normalized = path.replace(/\/$/, '');
   return normalized === '/admin/users' || normalized === '/api/admin/users';
+}
+
+function parseAdminUserVerifyPath(path) {
+  const m = path.match(/\/admin\/users\/([^/]+)\/verify-email\/?$/);
+  return m ? m[1] : null;
 }
 
 module.exports = { tryHandle };
