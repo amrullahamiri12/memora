@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import Logo from '../components/Logo';
 import Button from '../components/ui/Button';
 import ThemeToggle from '../components/ThemeToggle';
 
@@ -32,9 +33,7 @@ export default function Landing() {
       />
 
       <header className="relative z-10 flex items-center justify-between px-6 py-5 sm:px-10">
-        <Link to="/" className="font-display text-xl font-bold tracking-tight text-[var(--text-heading)]">
-          Memora
-        </Link>
+        <Logo to="/" variant="nav" />
         <nav className="flex items-center gap-4 sm:gap-6">
           <a
             href="/api-docs.html"
@@ -54,6 +53,9 @@ export default function Landing() {
 
       <main className="relative z-10 mx-auto max-w-5xl px-6 pb-20 pt-6 sm:px-10 sm:pt-12">
         <section className="page-enter text-center sm:text-left">
+          <div className="mb-6 flex justify-center sm:justify-start">
+            <Logo variant="landing" />
+          </div>
           <p className="mb-4 inline-block rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">
             Flashcards · quizzes · tests
           </p>
