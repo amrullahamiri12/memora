@@ -42,6 +42,12 @@ export default function AdminSubjects() {
     });
   };
 
+  const expandAll = () => setCollapsedIds(new Set());
+
+  const collapseAll = () => {
+    setCollapsedIds(new Set(subjects.map((s) => s.id)));
+  };
+
   const loadSubjects = () => {
     setLoading(true);
     api('/admin/subjects')
@@ -175,6 +181,24 @@ export default function AdminSubjects() {
         <EmptyState message="No subjects yet. Add one above or import flashcards via CSV." />
       ) : (
         <div className="space-y-4">
+          <div className="flex flex-wrap justify-end gap-4">
+            <button
+              type="button"
+              onClick={expandAll}
+              disabled={subjects.every((s) => isExpanded(s.id))}
+              className="text-sm font-medium text-[var(--accent)] hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50"
+            >
+              Expand all
+            </button>
+            <button
+              type="button"
+              onClick={collapseAll}
+              disabled={subjects.every((s) => !isExpanded(s.id))}
+              className="text-sm font-medium text-[var(--accent)] hover:underline disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50"
+            >
+              Collapse all
+            </button>
+          </div>
           {subjects.map((subject) => {
             const expanded = isExpanded(subject.id);
             return (
