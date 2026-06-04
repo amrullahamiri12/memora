@@ -10,6 +10,14 @@ function validateConfig() {
         'Vercel requires PostgreSQL. Set DATABASE_URL to a Postgres connection string in Vercel → Settings → Environment Variables, and use provider = "postgresql" in server/prisma/schema.prisma.'
       );
     }
+    if (!process.env.DIRECT_URL) {
+      throw new Error('DIRECT_URL is required on Vercel (Supabase direct connection, port 5432).');
+    }
+    if (!db.includes('pgbouncer=true') && db.includes(':6543')) {
+      console.warn(
+        'Warning: DATABASE_URL uses port 6543 but missing ?pgbouncer=true — add it for Supabase pooler + Prisma on Vercel.'
+      );
+    }
   }
 
   const secret = process.env.JWT_SECRET;

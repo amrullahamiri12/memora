@@ -13,6 +13,7 @@ const topicRoutes = require('./routes/topics');
 const progressRoutes = require('./routes/progress');
 const profileRoutes = require('./routes/profile');
 const adminRoutes = require('./routes/admin');
+const { checkDatabaseConnection } = require('./lib/prisma');
 
 const app = express();
 
@@ -45,8 +46,18 @@ app.use(
 );
 app.use(express.json({ limit: '2mb' }));
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
+app.get('/api/health', async (_req, res) => {
+  try {
+    await checkDatabaseConnection();
+    res.json({ status: 'ok', database: 'connected' });
+  } catch (err) {
+    console.error('Health check DB error:', err);
+    res.status(500).json({
+      status: 'error',
+      database: 'disconnected',
+      hint: 'Check DATABASE_URL (Supabase pooler port 6543 with ?pgbouncer=true) and DIRECT_URL on Vercel.',
+    });
+  }
 });
 
 app.use('/api/auth/login', authLimiter);

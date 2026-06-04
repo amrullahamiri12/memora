@@ -53,7 +53,13 @@ router.post(
 
       res.status(201).json({ token, user });
     } catch (err) {
-      console.error(err);
+      console.error('Register error:', err);
+      if (err.code === 'P1001' || err.code === 'P1000' || err.code === 'P1017') {
+        return res.status(500).json({
+          error:
+            'Cannot reach the database. On Vercel, set DATABASE_URL to the Supabase pooler URL (port 6543, ?pgbouncer=true).',
+        });
+      }
       res.status(500).json({ error: 'Registration failed' });
     }
   }
@@ -94,7 +100,13 @@ router.post(
         },
       });
     } catch (err) {
-      console.error(err);
+      console.error('Login error:', err);
+      if (err.code === 'P1001' || err.code === 'P1000' || err.code === 'P1017') {
+        return res.status(500).json({
+          error:
+            'Cannot reach the database. On Vercel, set DATABASE_URL to the Supabase pooler URL (port 6543, ?pgbouncer=true).',
+        });
+      }
       res.status(500).json({ error: 'Login failed' });
     }
   }
