@@ -11,6 +11,7 @@ export default function SubjectPicker({
   const [open, setOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
   const rootRef = useRef(null);
+  const inputId = useId();
   const listId = useId();
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -51,7 +52,7 @@ export default function SubjectPicker({
     if (disabled || !id || selectedSet.has(id)) return;
     onChange([...selectedIds, id]);
     setQuery('');
-    setOpen(unselected.length > 1);
+    setOpen(false);
   };
 
   const removeSubject = (id) => {
@@ -131,12 +132,12 @@ export default function SubjectPicker({
 
       {unselected.length > 0 && (
         <div ref={rootRef} className="relative">
-          <label htmlFor="subject-combobox" className="sr-only">
+          <label htmlFor={inputId} className="sr-only">
             Search and add subjects
           </label>
           <div className="relative">
             <input
-              id="subject-combobox"
+              id={inputId}
               type="text"
               role="combobox"
               aria-expanded={open}
@@ -218,6 +219,7 @@ export default function SubjectPicker({
       )}
 
       {selectedSubjects.length > 0 ? (
+        <>
         <ul className="flex flex-wrap gap-2" aria-label="Selected subjects">
           {selectedSubjects.map((subject) => {
             const accent = subjectAccent(subject.name);
@@ -259,11 +261,15 @@ export default function SubjectPicker({
             );
           })}
         </ul>
+        {unselected.length > 0 && (
+          <p className="text-xs text-[var(--text-muted)]">
+            Use the search field above to add more subjects.
+          </p>
+        )}
+        </>
       ) : (
         <p className="rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-solid)]/60 px-4 py-3 text-center text-sm text-[var(--text-muted)]">
-          {unselected.length > 0
-            ? 'Type to search, then click a subject to add it'
-            : 'All subjects selected'}
+          Type to search, then click a subject to add it
         </p>
       )}
     </div>
