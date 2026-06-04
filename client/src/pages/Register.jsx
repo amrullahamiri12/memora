@@ -10,6 +10,7 @@ import AuthFormHeader from '../components/AuthFormHeader';
 import SubjectPicker from '../components/SubjectPicker';
 import { api } from '../utils/api';
 import ContinueAsGuestButton from '../components/ContinueAsGuestButton';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 
 export default function Register() {
   const { register } = useAuth();
@@ -53,8 +54,8 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await register(name.trim(), email, password, subjectIds);
-      navigate('/dashboard');
+      const user = await register(name.trim(), email, password, subjectIds);
+      navigate(user.emailVerified === false ? '/verify-email' : '/dashboard');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -70,7 +71,7 @@ export default function Register() {
         <div className="mx-auto w-full max-w-lg page-enter">
           <AuthFormHeader
             title="Create account"
-            subtitle="Tell us what you want to study"
+            subtitle="We'll email you a verification link after sign-up"
           />
 
           {error && <Alert>{error}</Alert>}
@@ -134,7 +135,8 @@ export default function Register() {
             </Button>
           </form>
 
-          <div className="mt-8 border-t border-[var(--border)] pt-8">
+          <div className="mt-8 space-y-6 border-t border-[var(--border)] pt-8">
+            <GoogleSignInButton />
             <ContinueAsGuestButton />
           </div>
 

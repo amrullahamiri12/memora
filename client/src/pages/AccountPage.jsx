@@ -1,14 +1,35 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import ChangePassword from '../components/ChangePassword';
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Alert from '../components/ui/Alert';
 import { useAuth } from '../context/AuthContext';
 import { isGuestUser } from '../utils/guest';
 import GuestAccountUpgrade from '../components/GuestAccountUpgrade';
 
 export default function AccountPage() {
-  const { user } = useAuth();
+  const { user, resendVerification } = useAuth();
   const guest = isGuestUser(user);
+  const [verifyMsg, setVerifyMsg] = useState('');
+  const [verifyErr, setVerifyErr] = useState('');
+  const [verifyLoading, setVerifyLoading] = useState(false);
+
+  const handleResendVerify = async () => {
+    setVerifyLoading(true);
+    setVerifyMsg('');
+    setVerifyErr('');
+    try {
+      const data = await resendVerification();
+      setVerifyMsg(data.message || 'Verification email sent.');
+    } catch (err) {
+      setVerifyErr(err.message);
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
 
   return (
     <Layout>
@@ -23,6 +44,38 @@ export default function AccountPage() {
         <GuestAccountUpgrade />
       ) : (
         <>
+          {user?.emailVerified === false && (
+            <Card className="mb-6 border-[var(--accent)]/30 bg-[var(--accent-glow)]/20 p-5">
+              <h2 className="mb-2 text-lg font-semibold text-[var(--text-heading)]">
+                Verify your email
+              </h2>
+              <p className="mb-4 text-sm text-[var(--text-muted)]">
+                Study progress is saved, but you need to verify {user.email} before enrolling in
+                new subjects or saving study sessions.
+              </p>
+              {verifyErr && (
+                <div className="mb-3">
+                  <Alert>{verifyErr}</Alert>
+                </div>
+              )}
+              {verifyMsg && (
+                <div className="mb-3">
+                  <Alert type="success">{verifyMsg}</Alert>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" loading={verifyLoading} onClick={handleResendVerify}>
+                  Resend verification email
+                </Button>
+                <Link
+                  to="/verify-email"
+                  className="inline-flex items-center text-sm font-semibold text-[var(--accent)] hover:underline"
+                >
+                  Verification page
+                </Link>
+              </div>
+            </Card>
+          )}
           <Card className="mb-8">
             <h2 className="mb-4 text-lg font-semibold">Your Details</h2>
             <dl className="space-y-4 text-sm">

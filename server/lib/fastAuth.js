@@ -1,43 +1,63 @@
 const { randomUUID } = require('crypto');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const db = require('./pg');
-
-const { withGuestFlag, createGuest, upgradeGuest } = require('./guestAuth');
+const { isGuestEmail, createGuest, upgradeGuest } = require('./guestAuth');
+const { hashToken, generateToken, verificationExpiry, resetExpiry } = require('./authTokens');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('./email');
+const { verifyGoogleCredential } = require('./googleAuth');
+const {
+  USER_PUBLIC_COLUMNS,
+  publicUser,
+  authSuccess,
+  authCreated,
+} = require('./authUser');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function publicUser(user) {
-  return withGuestFlag(user);
+async function assignVerificationToken(userId) {
+  const token = generateToken();
+  const tokenHash = hashToken(token);
+  const expires = verificationExpiry();
+  await db.query(
+    `UPDATE users SET verification_token_hash = $1, verification_token_expires = $2
+     WHERE id = $3`,
+    [tokenHash, expires, userId]
+  );
+  return token;
+}
+
+async function findUserByEmail(email) {
+  const { rows } = await db.query(
+    `SELECT ${USER_PUBLIC_COLUMNS} FROM users WHERE email = $1 LIMIT 1`,
+    [email]
+  );
+  return rows[0] || null;
+}
+
+async function findUserById(userId) {
+  const { rows } = await db.query(
+    `SELECT ${USER_PUBLIC_COLUMNS} FROM users WHERE id = $1 LIMIT 1`,
+    [userId]
+  );
+  return rows[0] || null;
 }
 
 async function login(email, password) {
-  const { rows } = await db.query(
-    `SELECT id, name, email, role, password_hash AS "passwordHash"
-     FROM users WHERE email = $1 LIMIT 1`,
-    [email]
-  );
-  const user = rows[0];
-  if (!user) return { status: 401, body: { error: 'Invalid email or password' } };
+  const trimmedEmail = (email || '').trim().toLowerCase();
+  const user = await findUserByEmail(trimmedEmail);
+  if (!user || !user.passwordHash) {
+    return { status: 401, body: { error: 'Invalid email or password' } };
+  }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return { status: 401, body: { error: 'Invalid email or password' } };
 
-  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  });
-  return {
-    status: 200,
-    body: {
-      token,
-      user: publicUser(user),
-    },
-  };
+  return authSuccess(user);
 }
 
 async function register({ name, email, password, subjectIds }) {
   const trimmedName = (name || '').trim();
-  const trimmedEmail = (email || '').trim();
+  const trimmedEmail = (email || '').trim().toLowerCase();
   const ids = (subjectIds || []).filter((id) => typeof id === 'string' && id.trim());
 
   if (!trimmedName) return { status: 400, body: { error: 'Name is required' } };
@@ -62,16 +82,20 @@ async function register({ name, email, password, subjectIds }) {
 
   const userId = randomUUID();
   const passwordHash = await bcrypt.hash(password, 10);
+  const verifyToken = generateToken();
+  const verifyHash = hashToken(verifyToken);
+  const verifyExpires = verificationExpiry();
   const { getPool } = require('./pg');
   const client = await getPool().connect();
 
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(
-      `INSERT INTO users (id, name, email, password_hash, role, created_at)
-       VALUES ($1, $2, $3, $4, 'USER', NOW())
-       RETURNING id, name, email, role`,
-      [userId, trimmedName, trimmedEmail, passwordHash]
+      `INSERT INTO users (id, name, email, password_hash, role, created_at,
+                          verification_token_hash, verification_token_expires)
+       VALUES ($1, $2, $3, $4, 'USER', NOW(), $5, $6)
+       RETURNING ${USER_PUBLIC_COLUMNS}`,
+      [userId, trimmedName, trimmedEmail, passwordHash, verifyHash, verifyExpires]
     );
     for (const subjectId of subjects.rows.map((r) => r.id)) {
       await client.query(
@@ -81,11 +105,178 @@ async function register({ name, email, password, subjectIds }) {
       );
     }
     await client.query('COMMIT');
-    const user = rows[0];
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-    });
-    return { status: 201, body: { token, user: publicUser(user) } };
+    await sendVerificationEmail(trimmedEmail, verifyToken);
+    return authCreated(rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function verifyEmail(token) {
+  if (!token || typeof token !== 'string') {
+    return { status: 400, body: { error: 'Verification token is required' } };
+  }
+  const tokenHash = hashToken(token.trim());
+  const { rows } = await db.query(
+    `SELECT ${USER_PUBLIC_COLUMNS} FROM users
+     WHERE verification_token_hash = $1
+       AND verification_token_expires > NOW()
+     LIMIT 1`,
+    [tokenHash]
+  );
+  if (!rows[0]) {
+    return { status: 400, body: { error: 'Invalid or expired verification link' } };
+  }
+
+  const { rows: updated } = await db.query(
+    `UPDATE users SET email_verified_at = NOW(),
+                      verification_token_hash = NULL,
+                      verification_token_expires = NULL
+     WHERE id = $1
+     RETURNING ${USER_PUBLIC_COLUMNS}`,
+    [rows[0].id]
+  );
+  return authSuccess(updated[0]);
+}
+
+async function resendVerification(userId) {
+  const user = await findUserById(userId);
+  if (!user) return { status: 401, body: { error: 'User not found' } };
+  if (isGuestEmail(user.email)) {
+    return { status: 400, body: { error: 'Guest accounts do not need email verification' } };
+  }
+  if (user.emailVerifiedAt) {
+    return { status: 400, body: { error: 'Email is already verified' } };
+  }
+
+  const token = await assignVerificationToken(userId);
+  await sendVerificationEmail(user.email, token);
+  return { status: 200, body: { message: 'Verification email sent' } };
+}
+
+async function forgotPassword(email) {
+  const trimmedEmail = (email || '').trim().toLowerCase();
+  const generic = {
+    status: 200,
+    body: { message: 'If that email is registered, you will receive a reset link shortly.' },
+  };
+
+  if (!EMAIL_RE.test(trimmedEmail)) return generic;
+
+  const user = await findUserByEmail(trimmedEmail);
+  if (!user || isGuestEmail(user.email) || !user.passwordHash) return generic;
+
+  const token = generateToken();
+  const tokenHash = hashToken(token);
+  await db.query(
+    `UPDATE users SET reset_token_hash = $1, reset_token_expires = $2 WHERE id = $3`,
+    [tokenHash, resetExpiry(), user.id]
+  );
+  await sendPasswordResetEmail(trimmedEmail, token);
+  return generic;
+}
+
+async function resetPassword(token, password) {
+  if (!token || typeof token !== 'string') {
+    return { status: 400, body: { error: 'Reset token is required' } };
+  }
+  if (!password || password.length < 8) {
+    return { status: 400, body: { error: 'Password must be at least 8 characters' } };
+  }
+
+  const tokenHash = hashToken(token.trim());
+  const { rows } = await db.query(
+    `SELECT id FROM users
+     WHERE reset_token_hash = $1 AND reset_token_expires > NOW()
+     LIMIT 1`,
+    [tokenHash]
+  );
+  if (!rows[0]) {
+    return { status: 400, body: { error: 'Invalid or expired reset link' } };
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const { rows: updated } = await db.query(
+    `UPDATE users SET password_hash = $1,
+                      reset_token_hash = NULL,
+                      reset_token_expires = NULL
+     WHERE id = $2
+     RETURNING ${USER_PUBLIC_COLUMNS}`,
+    [passwordHash, rows[0].id]
+  );
+  return authSuccess(updated[0]);
+}
+
+async function loginWithGoogle({ credential, subjectIds }) {
+  if (!credential) {
+    return { status: 400, body: { error: 'Google credential is required' } };
+  }
+
+  let profile;
+  try {
+    profile = await verifyGoogleCredential(credential);
+  } catch (err) {
+    return { status: 401, body: { error: err.message || 'Google sign-in failed' } };
+  }
+
+  const byGoogle = await db.query(
+    `SELECT ${USER_PUBLIC_COLUMNS} FROM users WHERE google_id = $1 LIMIT 1`,
+    [profile.googleId]
+  );
+  if (byGoogle.rows[0]) {
+    return authSuccess(byGoogle.rows[0]);
+  }
+
+  const byEmail = await findUserByEmail(profile.email);
+  if (byEmail) {
+    if (isGuestEmail(byEmail.email)) {
+      return { status: 409, body: { error: 'Use guest upgrade or a different Google account' } };
+    }
+    const { rows } = await db.query(
+      `UPDATE users SET google_id = $1,
+                        email_verified_at = COALESCE(email_verified_at, NOW())
+       WHERE id = $2
+       RETURNING ${USER_PUBLIC_COLUMNS}`,
+      [profile.googleId, byEmail.id]
+    );
+    return authSuccess(rows[0]);
+  }
+
+  const ids = (subjectIds || []).filter((id) => typeof id === 'string' && id.trim());
+  const userId = randomUUID();
+  const { getPool } = require('./pg');
+  const client = await getPool().connect();
+
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `INSERT INTO users (id, name, email, google_id, email_verified_at, role, created_at)
+       VALUES ($1, $2, $3, $4, NOW(), 'USER', NOW())
+       RETURNING ${USER_PUBLIC_COLUMNS}`,
+      [userId, profile.name, profile.email, profile.googleId]
+    );
+
+    if (ids.length > 0) {
+      const subjects = await client.query(
+        `SELECT id FROM subjects WHERE id = ANY($1::text[])`,
+        [ids]
+      );
+      for (const subjectId of subjects.rows.map((r) => r.id)) {
+        await client.query(
+          `INSERT INTO user_subjects (id, user_id, subject_id, created_at)
+           VALUES ($1, $2, $3, NOW()) ON CONFLICT (user_id, subject_id) DO NOTHING`,
+          [randomUUID(), userId, subjectId]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    const result = authCreated(rows[0]);
+    result.body.needsSubjectSetup = ids.length === 0;
+    return result;
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -95,12 +286,9 @@ async function register({ name, email, password, subjectIds }) {
 }
 
 async function me(userId) {
-  const { rows } = await db.query(
-    `SELECT id, name, email, role FROM users WHERE id = $1 LIMIT 1`,
-    [userId]
-  );
-  if (!rows[0]) return { status: 401, body: { error: 'User not found' } };
-  return { status: 200, body: { user: publicUser(rows[0]) } };
+  const user = await findUserById(userId);
+  if (!user) return { status: 401, body: { error: 'User not found' } };
+  return { status: 200, body: { user: publicUser(user) } };
 }
 
 async function catalog() {
@@ -114,4 +302,16 @@ async function catalog() {
   return rows;
 }
 
-module.exports = { login, register, me, catalog, createGuest, upgradeGuest };
+module.exports = {
+  login,
+  register,
+  verifyEmail,
+  resendVerification,
+  forgotPassword,
+  resetPassword,
+  loginWithGoogle,
+  me,
+  catalog,
+  createGuest,
+  upgradeGuest,
+};

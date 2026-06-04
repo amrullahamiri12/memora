@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ProtectedRoute, StudentViewRoute, AdminRoute, GuestRoute } from './components/ProtectedRoute';
@@ -18,7 +19,13 @@ import AdminFlashcards from './pages/admin/AdminFlashcards';
 import AdminSubjects from './pages/admin/AdminSubjects';
 import AdminUsers from './pages/admin/AdminUsers';
 import Landing from './pages/Landing';
+import { isGuestUser } from './utils/guest';
 import GuestSetupPage from './pages/GuestSetupPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 function Home() {
   const { user, loading } = useAuth();
@@ -34,6 +41,12 @@ function Home() {
   if (isStaff(user.role) && !preview) {
     return <Navigate to="/admin" replace />;
   }
+  if (isGuestUser(user)) {
+    return <Navigate to="/guest/setup" replace />;
+  }
+  if (user.emailVerified === false) {
+    return <Navigate to="/verify-email" replace />;
+  }
   return <Navigate to="/dashboard" replace />;
 }
 
@@ -45,11 +58,8 @@ function DashboardRoute() {
   );
 }
 
-export default function App() {
+function AppRoutes() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route
@@ -68,6 +78,23 @@ export default function App() {
               </GuestRoute>
             }
           />
+          <Route
+            path="/forgot-password"
+            element={
+              <GuestRoute>
+                <ForgotPasswordPage />
+              </GuestRoute>
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              <GuestRoute>
+                <ResetPasswordPage />
+              </GuestRoute>
+            }
+          />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/dashboard" element={<DashboardRoute />} />
           <Route
             path="/guest/setup"
@@ -150,8 +177,20 @@ export default function App() {
             }
           />
         </Routes>
+  );
+}
+
+export default function App() {
+  const inner = (
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
   );
+
+  if (!googleClientId) return inner;
+  return <GoogleOAuthProvider clientId={googleClientId}>{inner}</GoogleOAuthProvider>;
 }

@@ -119,6 +119,50 @@ module.exports = async (req, res) => {
       return json(res, result.status, result.body);
     }
 
+    if (req.method === 'POST' && match(p, '/auth/verify-email')) {
+      if (!applyRateLimit(res, checkAuthRateLimit(req))) return;
+      const body = await parseBody(req);
+      const result = await require('../server/lib/fastAuth').verifyEmail(body.token);
+      return json(res, result.status, result.body);
+    }
+
+    if (req.method === 'POST' && match(p, '/auth/resend-verification')) {
+      if (!applyRateLimit(res, checkAuthRateLimit(req))) return;
+      const h = req.headers.authorization || req.headers.Authorization || '';
+      if (!h.startsWith('Bearer ')) {
+        return json(res, 401, { error: 'Authentication required' });
+      }
+      const payload = require('jsonwebtoken').verify(h.slice(7), process.env.JWT_SECRET, {
+        algorithms: ['HS256'],
+      });
+      const result = await require('../server/lib/fastAuth').resendVerification(payload.userId);
+      return json(res, result.status, result.body);
+    }
+
+    if (req.method === 'POST' && match(p, '/auth/forgot-password')) {
+      if (!applyRateLimit(res, checkAuthRateLimit(req))) return;
+      const body = await parseBody(req);
+      const result = await require('../server/lib/fastAuth').forgotPassword(body.email);
+      return json(res, result.status, result.body);
+    }
+
+    if (req.method === 'POST' && match(p, '/auth/reset-password')) {
+      if (!applyRateLimit(res, checkAuthRateLimit(req))) return;
+      const body = await parseBody(req);
+      const result = await require('../server/lib/fastAuth').resetPassword(
+        body.token,
+        body.password
+      );
+      return json(res, result.status, result.body);
+    }
+
+    if (req.method === 'POST' && match(p, '/auth/google')) {
+      if (!applyRateLimit(res, checkAuthRateLimit(req))) return;
+      const body = await parseBody(req);
+      const result = await require('../server/lib/fastAuth').loginWithGoogle(body);
+      return json(res, result.status, result.body);
+    }
+
     if (req.method === 'GET' && match(p, '/auth/me')) {
       const h = req.headers.authorization || req.headers.Authorization || '';
       if (!h.startsWith('Bearer ')) {

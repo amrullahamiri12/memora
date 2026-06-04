@@ -9,6 +9,11 @@ const {
   canEditUser,
   assertRoleChangeAllowed,
 } = require('./roles');
+const {
+  USER_PUBLIC_COLUMNS,
+  isEmailVerified,
+  verificationRequiredResponse,
+} = require('./authUser');
 
 const VALID_ROLES = ['USER', 'ADMIN', 'SUPER_ADMIN'];
 
@@ -18,7 +23,7 @@ function isStaff(role) {
   return STAFF.includes(role);
 }
 
-async function requireUser(authHeader) {
+async function requireUser(authHeader, { requireVerified = false } = {}) {
   if (!authHeader?.startsWith('Bearer ')) {
     return { error: { status: 401, body: { error: 'Authentication required' } } };
   }
@@ -27,11 +32,14 @@ async function requireUser(authHeader) {
       algorithms: ['HS256'],
     });
     const { rows } = await db.query(
-      'SELECT id, name, email, role FROM users WHERE id = $1 LIMIT 1',
+      `SELECT ${USER_PUBLIC_COLUMNS} FROM users WHERE id = $1 LIMIT 1`,
       [payload.userId]
     );
     if (!rows[0]) {
       return { error: { status: 401, body: { error: 'User not found' } } };
+    }
+    if (requireVerified && !isEmailVerified(rows[0])) {
+      return { error: verificationRequiredResponse() };
     }
     return { user: rows[0] };
   } catch {
@@ -265,8 +273,8 @@ async function createAdminUser(actor, body) {
   const userId = randomUUID();
   const passwordHash = await bcrypt.hash(password, 10);
   const { rows } = await db.query(
-    `INSERT INTO users (id, name, email, password_hash, role, created_at)
-     VALUES ($1, $2, $3, $4, $5, NOW())
+    `INSERT INTO users (id, name, email, password_hash, email_verified_at, role, created_at)
+     VALUES ($1, $2, $3, $4, NOW(), $5, NOW())
      RETURNING id, name, email, role, created_at AS "createdAt"`,
     [userId, name, email, passwordHash, role]
   );
@@ -807,14 +815,14 @@ async function tryHandle(method, path, query, authHeader, body = null) {
   }
 
   if (method === 'POST' && subjectsEnrollPath(path)) {
-    const auth = await requireUser(authHeader);
+    const auth = await requireUser(authHeader, { requireVerified: true });
     if (auth.error) return auth.error;
     if (!body) return { status: 400, body: { error: 'Request body required' } };
     return subjectsEnroll(auth.user, body);
   }
 
   if (method === 'POST' && progressPath(path)) {
-    const auth = await requireUser(authHeader);
+    const auth = await requireUser(authHeader, { requireVerified: true });
     if (auth.error) return auth.error;
     const { saveProgressFast } = require('./progressFast');
     return saveProgressFast(auth.user, body);

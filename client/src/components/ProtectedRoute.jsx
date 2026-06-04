@@ -2,6 +2,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { isStaff } from '../utils/roles';
+import { isGuestUser } from '../utils/guest';
 import { useStudentPreview } from '../hooks/useStudentPreview';
 import Spinner from './ui/Spinner';
 
@@ -39,6 +40,10 @@ export function StudentViewRoute({ children }) {
     return <Navigate to="/admin" replace />;
   }
 
+  if (!isGuestUser(user) && user.emailVerified === false) {
+    return <Navigate to="/verify-email" replace />;
+  }
+
   return children;
 }
 
@@ -64,7 +69,11 @@ export function GuestRoute({ children }) {
   if (loading) return <Spinner />;
 
   if (user) {
-    return <Navigate to={isStaff(user.role) ? '/admin' : '/dashboard'} replace />;
+    let to = '/dashboard';
+    if (isStaff(user.role)) to = '/admin';
+    else if (isGuestUser(user)) to = '/guest/setup';
+    else if (user.emailVerified === false) to = '/verify-email';
+    return <Navigate to={to} replace />;
   }
 
   return children;

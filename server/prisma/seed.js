@@ -316,14 +316,21 @@ async function main() {
     update: {
       role: 'SUPER_ADMIN',
       passwordHash,
+      emailVerifiedAt: new Date(),
     },
     create: {
       name: 'Admin',
       email: 'admin@app.com',
       passwordHash,
+      emailVerifiedAt: new Date(),
       role: 'SUPER_ADMIN',
     },
   });
+
+  await prisma.$executeRaw`
+    UPDATE users SET email_verified_at = created_at
+    WHERE email_verified_at IS NULL AND email NOT LIKE '%@guest.memora.local'
+  `;
   console.log('Super admin ready: admin@app.com / admin123');
 
   const allCards = [

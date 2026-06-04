@@ -1,14 +1,18 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const { body } = require('express-validator');
 const prisma = require('../lib/prisma');
 const authMiddleware = require('../middleware/auth');
 const validate = require('../middleware/validate');
-const { enrollUserInSubjects } = require('../lib/userSubjects');
-const { createGuest, upgradeGuest, withGuestFlag, isGuestEmail } = require('../lib/guestAuth');
+const fastAuth = require('../lib/fastAuth');
+const { isGuestEmail } = require('../lib/guestAuth');
+const { publicUser } = require('../lib/authUser');
 
 const router = express.Router();
+
+function send(res, result) {
+  res.status(result.status).json(result.body);
+}
 
 router.post(
   '/register',
@@ -25,41 +29,9 @@ router.post(
   validate,
   async (req, res) => {
     try {
-      const { name, email, password, subjectIds } = req.body;
-
-      const existing = await prisma.user.findUnique({ where: { email } });
-      if (existing) {
-        return res.status(409).json({ error: 'Email already registered' });
-      }
-
-      const ids = (subjectIds || []).filter((id) => typeof id === 'string' && id.trim());
-      const subjectCount = await prisma.subject.count({
-        where: { id: { in: ids } },
-      });
-      if (subjectCount === 0) {
-        return res.status(400).json({ error: 'Select at least one valid subject' });
-      }
-
-      const passwordHash = await bcrypt.hash(password, 10);
-      const user = await prisma.user.create({
-        data: { name, email, passwordHash, role: 'USER' },
-        select: { id: true, name: true, email: true, role: true },
-      });
-
-      await enrollUserInSubjects(user.id, ids);
-
-      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-      });
-
-      res.status(201).json({ token, user: withGuestFlag(user) });
+      send(res, await fastAuth.register(req.body));
     } catch (err) {
       console.error('Register error:', err);
-      if (err.code === 'P1001' || err.code === 'P1000' || err.code === 'P1017') {
-        return res.status(503).json({
-          error: 'Cannot reach the database. Check DATABASE_URL (pooler port 6543).',
-        });
-      }
       res.status(500).json({ error: 'Registration failed' });
     }
   }
@@ -74,38 +46,9 @@ router.post(
   validate,
   async (req, res) => {
     try {
-      const { email, password } = req.body;
-
-      const user = await prisma.user.findUnique({ where: { email } });
-      if (!user) {
-        return res.status(401).json({ error: 'Invalid email or password' });
-      }
-
-      const valid = await bcrypt.compare(password, user.passwordHash);
-      if (!valid) {
-        return res.status(401).json({ error: 'Invalid email or password' });
-      }
-
-      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-      });
-
-      res.json({
-        token,
-        user: withGuestFlag({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        }),
-      });
+      send(res, await fastAuth.login(req.body.email, req.body.password));
     } catch (err) {
       console.error('Login error:', err);
-      if (err.code === 'P1001' || err.code === 'P1000' || err.code === 'P1017') {
-        return res.status(503).json({
-          error: 'Cannot reach the database. Check DATABASE_URL (pooler port 6543).',
-        });
-      }
       res.status(500).json({ error: 'Login failed' });
     }
   }
@@ -113,8 +56,7 @@ router.post(
 
 router.post('/guest', async (req, res) => {
   try {
-    const result = await createGuest();
-    res.status(result.status).json(result.body);
+    send(res, await fastAuth.createGuest());
   } catch (err) {
     console.error('Guest auth error:', err);
     res.status(500).json({ error: 'Could not start guest session' });
@@ -134,8 +76,7 @@ router.post(
   validate,
   async (req, res) => {
     try {
-      const result = await upgradeGuest(req.user.id, req.body);
-      res.status(result.status).json(result.body);
+      send(res, await fastAuth.upgradeGuest(req.user.id, req.body));
     } catch (err) {
       console.error('Upgrade guest error:', err);
       res.status(500).json({ error: 'Failed to create account' });
@@ -143,8 +84,72 @@ router.post(
   }
 );
 
-router.get('/me', authMiddleware, (req, res) => {
-  res.json({ user: withGuestFlag(req.user) });
+router.post('/verify-email', async (req, res) => {
+  try {
+    send(res, await fastAuth.verifyEmail(req.body.token));
+  } catch (err) {
+    console.error('Verify email error:', err);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+router.post('/resend-verification', authMiddleware, async (req, res) => {
+  try {
+    send(res, await fastAuth.resendVerification(req.user.id));
+  } catch (err) {
+    console.error('Resend verification error:', err);
+    res.status(500).json({ error: 'Could not send verification email' });
+  }
+});
+
+router.post(
+  '/forgot-password',
+  [body('email').isEmail().withMessage('Valid email is required')],
+  validate,
+  async (req, res) => {
+    try {
+      send(res, await fastAuth.forgotPassword(req.body.email));
+    } catch (err) {
+      console.error('Forgot password error:', err);
+      res.status(500).json({ error: 'Request failed' });
+    }
+  }
+);
+
+router.post(
+  '/reset-password',
+  [
+    body('token').notEmpty().withMessage('Reset token is required'),
+    body('password')
+      .isLength({ min: 8 })
+      .withMessage('Password must be at least 8 characters'),
+  ],
+  validate,
+  async (req, res) => {
+    try {
+      send(res, await fastAuth.resetPassword(req.body.token, req.body.password));
+    } catch (err) {
+      console.error('Reset password error:', err);
+      res.status(500).json({ error: 'Reset failed' });
+    }
+  }
+);
+
+router.post('/google', async (req, res) => {
+  try {
+    send(res, await fastAuth.loginWithGoogle(req.body));
+  } catch (err) {
+    console.error('Google auth error:', err);
+    res.status(500).json({ error: 'Google sign-in failed' });
+  }
+});
+
+router.get('/me', authMiddleware, async (req, res) => {
+  try {
+    send(res, await fastAuth.me(req.user.id));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load user' });
+  }
 });
 
 router.post(
@@ -172,6 +177,12 @@ router.post(
       if (isGuestEmail(user.email)) {
         return res.status(400).json({
           error: 'Guest accounts cannot change password. Create your account from Account settings.',
+        });
+      }
+
+      if (!user.passwordHash) {
+        return res.status(400).json({
+          error: 'This account uses Google sign-in. Set a password from forgot-password if needed.',
         });
       }
 

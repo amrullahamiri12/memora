@@ -1,7 +1,14 @@
 const { randomUUID } = require('crypto');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const db = require('./pg');
+const { hashToken, generateToken, verificationExpiry } = require('./authTokens');
+const { sendVerificationEmail } = require('./email');
+const {
+  USER_PUBLIC_COLUMNS,
+  publicUser,
+  authCreated,
+  authSuccess,
+} = require('./authUser');
 
 const GUEST_EMAIL_SUFFIX = '@guest.memora.local';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -12,7 +19,10 @@ function isGuestEmail(email) {
 
 function withGuestFlag(user) {
   if (!user) return user;
-  return { ...user, isGuest: isGuestEmail(user.email) };
+  if (user.emailVerified !== undefined) {
+    return { ...user, isGuest: isGuestEmail(user.email) };
+  }
+  return publicUser(user);
 }
 
 async function createGuest() {
@@ -28,21 +38,17 @@ async function createGuest() {
   const email = `guest-${userId}${GUEST_EMAIL_SUFFIX}`;
   const passwordHash = await bcrypt.hash(`${randomUUID()}${randomUUID()}`, 10);
   const { rows } = await db.query(
-    `INSERT INTO users (id, name, email, password_hash, role, created_at)
-     VALUES ($1, $2, $3, $4, 'USER', NOW())
-     RETURNING id, name, email, role`,
+    `INSERT INTO users (id, name, email, password_hash, email_verified_at, role, created_at)
+     VALUES ($1, $2, $3, $4, NOW(), 'USER', NOW())
+     RETURNING ${USER_PUBLIC_COLUMNS}`,
     [userId, 'Guest', email, passwordHash]
   );
-  const user = withGuestFlag(rows[0]);
-  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  });
-  return { status: 201, body: { token, user } };
+  return authCreated(rows[0]);
 }
 
 async function upgradeGuest(userId, { name, email, password }) {
   const trimmedName = (name || '').trim();
-  const trimmedEmail = (email || '').trim();
+  const trimmedEmail = (email || '').trim().toLowerCase();
 
   if (!trimmedName) return { status: 400, body: { error: 'Name is required' } };
   if (!EMAIL_RE.test(trimmedEmail)) {
@@ -52,7 +58,10 @@ async function upgradeGuest(userId, { name, email, password }) {
     return { status: 400, body: { error: 'Password must be at least 8 characters' } };
   }
 
-  const current = await db.query('SELECT id, email FROM users WHERE id = $1 LIMIT 1', [userId]);
+  const current = await db.query(
+    `SELECT id, email FROM users WHERE id = $1 LIMIT 1`,
+    [userId]
+  );
   if (!current.rows[0]) return { status: 401, body: { error: 'User not found' } };
   if (!isGuestEmail(current.rows[0].email)) {
     return { status: 400, body: { error: 'This account is already registered' } };
@@ -65,20 +74,23 @@ async function upgradeGuest(userId, { name, email, password }) {
   if (taken.rows[0]) return { status: 409, body: { error: 'Email already registered' } };
 
   const passwordHash = await bcrypt.hash(password, 10);
+  const verifyToken = generateToken();
+  const verifyHash = hashToken(verifyToken);
+  const verifyExpires = verificationExpiry();
+
   const { rows } = await db.query(
-    `UPDATE users SET name = $1, email = $2, password_hash = $3
-     WHERE id = $4
-     RETURNING id, name, email, role`,
-    [trimmedName, trimmedEmail, passwordHash, userId]
+    `UPDATE users SET name = $1, email = $2, password_hash = $3,
+                      email_verified_at = NULL,
+                      verification_token_hash = $4,
+                      verification_token_expires = $5
+     WHERE id = $6
+     RETURNING ${USER_PUBLIC_COLUMNS}`,
+    [trimmedName, trimmedEmail, passwordHash, verifyHash, verifyExpires, userId]
   );
-  const user = withGuestFlag(rows[0]);
-  const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  });
-  return {
-    status: 200,
-    body: { token, user, message: 'Account created — your study progress is saved.' },
-  };
+  await sendVerificationEmail(trimmedEmail, verifyToken);
+  const result = authSuccess(rows[0]);
+  result.body.message = 'Account created — check your email to verify.';
+  return result;
 }
 
 module.exports = {

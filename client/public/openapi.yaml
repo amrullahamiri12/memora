@@ -59,6 +59,10 @@ components:
           type: string
           enum: [USER, ADMIN, SUPER_ADMIN]
         createdAt: { type: string, format: date-time }
+        emailVerified: { type: boolean }
+        hasPassword: { type: boolean }
+        hasGoogle: { type: boolean }
+        isGuest: { type: boolean }
     AuthResponse:
       type: object
       properties:
@@ -331,6 +335,124 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AuthResponse' }
         '401':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/verify-email:
+    post:
+      tags: [Auth]
+      summary: Verify email with token from link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/resend-verification:
+    post:
+      tags: [Auth]
+      summary: Resend verification email (authenticated)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        '400':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password with token from email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string }
+                password: { type: string, minLength: 8 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/google:
+    post:
+      tags: [Auth]
+      summary: Sign in or register with Google ID token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credential]
+              properties:
+                credential: { type: string }
+                subjectIds:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/AuthResponse' }
+                  - type: object
+                    properties:
+                      needsSubjectSetup: { type: boolean }
+        '400':
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }

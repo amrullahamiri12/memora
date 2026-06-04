@@ -9,6 +9,15 @@ import Alert from '../components/ui/Alert';
 import AuthPageTopBar from '../components/AuthPageTopBar';
 import AuthFormHeader from '../components/AuthFormHeader';
 import ContinueAsGuestButton from '../components/ContinueAsGuestButton';
+import GoogleSignInButton from '../components/GoogleSignInButton';
+import { isGuestUser } from '../utils/guest';
+
+function afterAuthPath(user) {
+  if (isStaff(user.role)) return '/admin';
+  if (isGuestUser(user)) return '/guest/setup';
+  if (user.emailVerified === false) return '/verify-email';
+  return '/dashboard';
+}
 
 export default function Login() {
   const { login } = useAuth();
@@ -30,7 +39,7 @@ export default function Login() {
     setLoading(true);
     try {
       const user = await login(email, password);
-      navigate(isStaff(user.role) ? '/admin' : '/dashboard');
+      navigate(afterAuthPath(user));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -68,12 +77,18 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
             />
+            <p className="text-right text-sm">
+              <Link to="/forgot-password" className="font-medium text-[var(--accent)] hover:underline">
+                Forgot password?
+              </Link>
+            </p>
             <Button type="submit" loading={loading} className="w-full py-3">
               Sign in
             </Button>
           </form>
 
-          <div className="mt-8 border-t border-[var(--border)] pt-8">
+          <div className="mt-8 space-y-6 border-t border-[var(--border)] pt-8">
+            <GoogleSignInButton />
             <ContinueAsGuestButton />
           </div>
 

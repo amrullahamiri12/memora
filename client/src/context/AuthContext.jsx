@@ -4,6 +4,12 @@ import { disableStudentView } from '../utils/studentView';
 
 const AuthContext = createContext(null);
 
+function applyAuthResponse(data) {
+  if (data.token) setToken(data.token);
+  if (data.user) return data.user;
+  return null;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,8 +41,7 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-    setToken(data.token);
-    setUser(data.user);
+    setUser(applyAuthResponse(data));
     return data.user;
   };
 
@@ -45,8 +50,7 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ name, email, password, subjectIds }),
     });
-    setToken(data.token);
-    setUser(data.user);
+    setUser(applyAuthResponse(data));
     return data.user;
   };
 
@@ -55,8 +59,7 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({}),
     });
-    setToken(data.token);
-    setUser(data.user);
+    setUser(applyAuthResponse(data));
     return data.user;
   };
 
@@ -65,8 +68,45 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ name, email, password }),
     });
-    setToken(data.token);
-    setUser(data.user);
+    setUser(applyAuthResponse(data));
+    return data;
+  };
+
+  const verifyEmail = async (token) => {
+    const data = await api('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+    setUser(applyAuthResponse(data));
+    return data.user;
+  };
+
+  const resendVerification = async () => {
+    return api('/auth/resend-verification', { method: 'POST', body: JSON.stringify({}) });
+  };
+
+  const forgotPassword = async (email) => {
+    return api('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  };
+
+  const resetPassword = async (token, password) => {
+    const data = await api('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+    setUser(applyAuthResponse(data));
+    return data.user;
+  };
+
+  const loginWithGoogle = async (credential, subjectIds) => {
+    const data = await api('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential, subjectIds }),
+    });
+    setUser(applyAuthResponse(data));
     return data;
   };
 
@@ -78,7 +118,21 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, continueAsGuest, upgradeGuest, logout }}
+      value={{
+        user,
+        loading,
+        loadUser,
+        login,
+        register,
+        continueAsGuest,
+        upgradeGuest,
+        verifyEmail,
+        resendVerification,
+        forgotPassword,
+        resetPassword,
+        loginWithGoogle,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

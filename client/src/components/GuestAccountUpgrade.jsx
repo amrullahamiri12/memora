@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Input from './ui/Input';
 import Button from './ui/Button';
@@ -7,6 +8,7 @@ import Card from './ui/Card';
 
 export default function GuestAccountUpgrade() {
   const { upgradeGuest } = useAuth();
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,8 +37,9 @@ export default function GuestAccountUpgrade() {
     setLoading(true);
     try {
       const result = await upgradeGuest(name.trim(), email.trim(), password);
-      setSuccess(result.message || 'Account created — your progress is saved.');
+      setSuccess(result.message || 'Account created — check your email to verify.');
       setPassword('');
+      navigate('/verify-email', { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
