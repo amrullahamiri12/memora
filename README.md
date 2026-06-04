@@ -325,7 +325,7 @@ Query: `page`, `limit` (default 10 topics per page).
 | GET | `/admin/reports/overview` | Admin | KPIs, growth stats, DAU/WAU/MAU (`from`, `to` dates, UTC) |
 | GET | `/admin/reports/learners` | Admin | Learner engagement table (`page`, `limit`, `role`, `inactiveDays`, `includeInactive`; `format=csv` export) |
 | GET | `/admin/reports/content` | Admin | Content health by subject/topic with insight flags |
-| GET/POST/PUT/DELETE | `/admin/users` | Admin | Users (`page`, `limit`, `includeInactive` on GET) |
+| GET/POST/PUT/DELETE | `/admin/users` | Admin | Users (`page`, `limit`, `group=learners\|admins\|all`, `includeInactive` on GET) |
 | DELETE | `/admin/users/:id` | Admin | Deactivate user (not hard delete) |
 | POST | `/admin/users/:id/reactivate` | Super admin | Reactivate deactivated user |
 | POST | `/admin/users/:id/verify-email` | Super admin | Mark email verified |

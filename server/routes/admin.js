@@ -29,6 +29,7 @@ const validate = require('../middleware/validate');
 const { parsePagination, paginatedResponse } = require('../lib/pagination');
 const { getMaxCsvBytes } = require('../lib/config');
 const { getOverview, getLearners, getContent } = require('../lib/adminReports');
+const { parseUserGroupFilter } = require('../lib/adminUserFilters');
 
 const router = express.Router();
 
@@ -172,9 +173,11 @@ router.get('/users', async (req, res) => {
     const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 15 });
     const includeInactive =
       req.query.includeInactive === 'true' || req.query.includeInactive === '1';
+    const roleFilter = parseUserGroupFilter(req.query);
     const where = {
       NOT: { email: { endsWith: '@guest.memora.local' } },
       ...(includeInactive ? {} : { deactivatedAt: null }),
+      ...roleFilter.prisma,
     };
     const [total, users] = await Promise.all([
       prisma.user.count({ where }),

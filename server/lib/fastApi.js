@@ -17,6 +17,7 @@ const {
   verificationRequiredResponse,
 } = require('./authUser');
 const { deactivateUser, reactivateUser } = require('./userLifecycle');
+const { parseUserGroupFilter } = require('./adminUserFilters');
 
 const VALID_ROLES = ['USER', 'ADMIN', 'SUPER_ADMIN'];
 
@@ -141,16 +142,17 @@ async function adminUsers(query) {
   const { page, limit, skip } = parsePage(query, 15);
   const includeInactive = query.includeInactive === 'true' || query.includeInactive === '1';
   const activeFilter = includeInactive ? '' : ' AND deactivated_at IS NULL';
+  const roleFilter = parseUserGroupFilter(query).sql;
   const [countRes, listRes] = await Promise.all([
     db.query(
-      `SELECT COUNT(*)::int AS total FROM users WHERE email NOT LIKE $1${activeFilter}`,
+      `SELECT COUNT(*)::int AS total FROM users WHERE email NOT LIKE $1${activeFilter}${roleFilter}`,
       [GUEST_EMAIL_PATTERN]
     ),
     db.query(
       `SELECT id, name, email, role, created_at AS "createdAt",
               (email_verified_at IS NOT NULL) AS "emailVerified",
               (deactivated_at IS NULL) AS "active"
-       FROM users WHERE email NOT LIKE $3${activeFilter}
+       FROM users WHERE email NOT LIKE $3${activeFilter}${roleFilter}
        ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
       [limit, skip, GUEST_EMAIL_PATTERN]
     ),

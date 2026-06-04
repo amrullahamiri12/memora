@@ -28,10 +28,22 @@ const emptyForm = {
   subjectIds: [],
 };
 
+const USER_GROUPS = [
+  { value: 'all', label: 'All users' },
+  { value: 'learners', label: 'Learners only' },
+  { value: 'admins', label: 'Admins only' },
+];
+
 function roleBadgeClass(role) {
   if (role === 'SUPER_ADMIN') return 'bg-[var(--accent-deep)]/15 text-[var(--accent-deep)]';
   if (role === 'ADMIN') return 'bg-[var(--accent-glow)] text-[var(--accent)]';
   return 'bg-[var(--surface-solid)] text-[var(--text-muted)]';
+}
+
+function groupSubtitle(group, total) {
+  if (group === 'learners') return `${total} learners`;
+  if (group === 'admins') return `${total} admins`;
+  return `${total} users`;
 }
 
 export default function AdminUsers() {
@@ -39,6 +51,7 @@ export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 1 });
   const [page, setPage] = useState(1);
+  const [userGroup, setUserGroup] = useState('all');
   const [includeInactive, setIncludeInactive] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
@@ -54,7 +67,8 @@ export default function AdminUsers() {
   const loadUsers = (targetPage = page) => {
     setLoading(true);
     const inactiveParam = includeInactive ? '&includeInactive=1' : '';
-    api(`/admin/users?page=${targetPage}&limit=${PAGE_SIZE}${inactiveParam}`)
+    const groupParam = userGroup !== 'all' ? `&group=${userGroup}` : '';
+    api(`/admin/users?page=${targetPage}&limit=${PAGE_SIZE}${inactiveParam}${groupParam}`)
       .then((data) => {
         setUsers(data.items);
         setPagination(data.pagination);
@@ -66,7 +80,7 @@ export default function AdminUsers() {
 
   useEffect(() => {
     loadUsers(page);
-  }, [page, includeInactive]);
+  }, [page, includeInactive, userGroup]);
 
   useEffect(() => {
     if (!showForm || editingId) return;
@@ -212,25 +226,52 @@ export default function AdminUsers() {
         title="Users"
         subtitle={
           includeInactive
-            ? `${pagination.total} users (${activeCount} active on this page)`
-            : `${pagination.total} active users`
+            ? `${groupSubtitle(userGroup, pagination.total)} (${activeCount} active on this page)`
+            : groupSubtitle(userGroup, pagination.total)
         }
         action={!showForm && <Button onClick={handleAdd}>+ Add user</Button>}
       />
 
-      <div className="mb-4 flex items-center gap-2">
-        <input
-          id="include-inactive"
-          type="checkbox"
-          checked={includeInactive}
-          onChange={(e) => {
-            setIncludeInactive(e.target.checked);
-            setPage(1);
-          }}
-          className="h-4 w-4 rounded border-[var(--border)]"
-        />
-        <label htmlFor="include-inactive" className="text-sm text-[var(--text-muted)]">
-          Show deactivated users
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div>
+          <p className="mb-2 text-sm font-medium text-[var(--text-label)]">Show</p>
+          <div
+            className="inline-flex rounded-xl border border-[var(--border)] bg-[var(--surface-solid)] p-1"
+            role="group"
+            aria-label="Filter users by role"
+          >
+            {USER_GROUPS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={userGroup === option.value}
+                onClick={() => {
+                  setUserGroup(option.value);
+                  setPage(1);
+                }}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  userGroup === option.value
+                    ? 'bg-[var(--accent)] text-white shadow-sm'
+                    : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)]'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="flex cursor-pointer items-center gap-2 pb-1">
+          <input
+            id="include-inactive"
+            type="checkbox"
+            checked={includeInactive}
+            onChange={(e) => {
+              setIncludeInactive(e.target.checked);
+              setPage(1);
+            }}
+            className="h-4 w-4 rounded border-[var(--border)]"
+          />
+          <span className="text-sm text-[var(--text-muted)]">Include deactivated</span>
         </label>
       </div>
 

@@ -902,6 +902,10 @@ paths:
           in: query
           schema: { type: string, enum: ['0', '1'] }
           description: Include deactivated users when `1`
+        - name: group
+          in: query
+          schema: { type: string, enum: [all, learners, admins], default: all }
+          description: "`learners` = USER only; `admins` = ADMIN and SUPER_ADMIN"
       responses:
         '200':
           content:
