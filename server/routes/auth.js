@@ -3,10 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body } = require('express-validator');
 const prisma = require('../lib/prisma');
-const { withTimeout } = require('../lib/withTimeout');
 const authMiddleware = require('../middleware/auth');
-
-const DB_TIMEOUT_MS = 8000;
 const validate = require('../middleware/validate');
 const { enrollUserInSubjects } = require('../lib/userSubjects');
 
@@ -29,20 +26,15 @@ router.post(
     try {
       const { name, email, password, subjectIds } = req.body;
 
-      const existing = await withTimeout(
-        prisma.user.findUnique({ where: { email } }),
-        DB_TIMEOUT_MS,
-        'Database connection timed out. Check DATABASE_URL on Vercel (Supabase pooler, port 6543).'
-      );
+      const existing = await prisma.user.findUnique({ where: { email } });
       if (existing) {
         return res.status(409).json({ error: 'Email already registered' });
       }
 
       const ids = (subjectIds || []).filter((id) => typeof id === 'string' && id.trim());
-      const subjectCount = await withTimeout(
-        prisma.subject.count({ where: { id: { in: ids } } }),
-        DB_TIMEOUT_MS
-      );
+      const subjectCount = await prisma.subject.count({
+        where: { id: { in: ids } },
+      });
       if (subjectCount === 0) {
         return res.status(400).json({ error: 'Select at least one valid subject' });
       }
@@ -62,13 +54,9 @@ router.post(
       res.status(201).json({ token, user });
     } catch (err) {
       console.error('Register error:', err);
-      if (err.message?.includes('timed out')) {
-        return res.status(503).json({ error: err.message });
-      }
       if (err.code === 'P1001' || err.code === 'P1000' || err.code === 'P1017') {
-        return res.status(500).json({
-          error:
-            'Cannot reach the database. On Vercel, set DATABASE_URL to the Supabase pooler URL (port 6543, ?pgbouncer=true).',
+        return res.status(503).json({
+          error: 'Cannot reach the database. Check DATABASE_URL (pooler port 6543).',
         });
       }
       res.status(500).json({ error: 'Registration failed' });
@@ -87,11 +75,7 @@ router.post(
     try {
       const { email, password } = req.body;
 
-      const user = await withTimeout(
-        prisma.user.findUnique({ where: { email } }),
-        DB_TIMEOUT_MS,
-        'Database connection timed out. Check DATABASE_URL on Vercel (Supabase pooler, port 6543).'
-      );
+      const user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
@@ -116,13 +100,9 @@ router.post(
       });
     } catch (err) {
       console.error('Login error:', err);
-      if (err.message?.includes('timed out')) {
-        return res.status(503).json({ error: err.message });
-      }
       if (err.code === 'P1001' || err.code === 'P1000' || err.code === 'P1017') {
-        return res.status(500).json({
-          error:
-            'Cannot reach the database. On Vercel, set DATABASE_URL to the Supabase pooler URL (port 6543, ?pgbouncer=true).',
+        return res.status(503).json({
+          error: 'Cannot reach the database. Check DATABASE_URL (pooler port 6543).',
         });
       }
       res.status(500).json({ error: 'Login failed' });

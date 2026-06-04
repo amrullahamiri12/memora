@@ -30,48 +30,23 @@ export async function api(path, options = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const controller = new AbortController();
-  const timeoutMs = 25000;
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
   let res;
   try {
     res = await fetch(apiUrl(path), {
       ...options,
       headers,
-      signal: controller.signal,
     });
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      throw new Error(
-        'Request timed out. If /api/ping works, the database query is slow — check DATABASE_URL uses Supabase pooler (port 6543) and redeploy.'
-      );
-    }
+  } catch {
     throw new Error(
       'Cannot connect to the server. Run `npm run dev` in the server folder (port 5001).'
     );
-  } finally {
-    clearTimeout(timeoutId);
   }
 
-  const text = await res.text();
-  let data = {};
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      if (text.includes('FUNCTION_INVOCATION_FAILED')) {
-        throw new Error(
-          'The API failed to start. In Vercel, set DATABASE_URL (pooler, port 6543, ?pgbouncer=true), DIRECT_URL (port 5432), and JWT_SECRET (32+ characters), then redeploy.'
-        );
-      }
-    }
-  }
+  const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
     const message =
       data.error ||
-      data.details ||
       data.config ||
       data.errors?.[0]?.msg ||
       (res.status === 403
