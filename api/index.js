@@ -1,7 +1,6 @@
-const path = require('path');
 const serverless = require('serverless-http');
 
-require('dotenv').config({ path: path.join(__dirname, '../server/.env') });
+// Env: Vercel injects vars at runtime. Local .env is loaded in server/app.js (server/node_modules).
 
 function jsonResponse(statusCode, body) {
   return {
