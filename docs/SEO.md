@@ -22,6 +22,7 @@ Set `VITE_SITE_URL` in `client/.env` (and Vercel env) if your canonical domain d
 1. Go to [Google Search Console](https://search.google.com/search-console).
 2. **Add property** → URL prefix → `https://memora.cards`
 3. **Verify ownership** (pick one):
+   - **HTML file** — place Google’s file in `client/public/` (e.g. `google17d34dc2a87ff715.html`), deploy, then open `https://memora.cards/<filename>` to confirm it loads before clicking Verify.
    - **HTML tag** — add the meta tag Google gives you to `client/index.html` `<head>`, deploy, verify.
    - **DNS** — add TXT record at your domain registrar (best long-term).
 4. After verification, open **Sitemaps** → submit: `https://memora.cards/sitemap.xml`
