@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { isStaff } from '../utils/roles';
-import { isStudentViewActive } from '../utils/studentView';
+import { useStudentPreview } from '../hooks/useStudentPreview';
 import Spinner from './ui/Spinner';
 
 export function ProtectedRoute({ children }) {
@@ -17,17 +17,11 @@ export function ProtectedRoute({ children }) {
   return children;
 }
 
-/** Study app routes — staff need "Preview as student" enabled. */
+/** Study app routes — staff need preview enabled (?preview=1 or prior opt-in). */
 export function StudentViewRoute({ children }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [preview, setPreview] = useState(isStudentViewActive);
-
-  useEffect(() => {
-    const sync = () => setPreview(isStudentViewActive());
-    window.addEventListener('memora-student-view', sync);
-    return () => window.removeEventListener('memora-student-view', sync);
-  }, []);
+  const preview = useStudentPreview();
 
   useEffect(() => {
     if (!loading && user && isStaff(user.role) && !preview) {

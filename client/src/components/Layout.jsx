@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isStaff } from '../utils/roles';
+import { useStudentPreview } from '../hooks/useStudentPreview';
 import {
   disableStudentView,
   enableStudentView,
-  isStudentViewActive,
+  withPreviewQuery,
 } from '../utils/studentView';
 import { api } from '../utils/api';
 import ThemeToggle from './ThemeToggle';
@@ -14,17 +15,13 @@ import Logo from './Logo';
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const [streak, setStreak] = useState(0);
-  const [studentView, setStudentView] = useState(isStudentViewActive);
-
-  useEffect(() => {
-    const sync = () => setStudentView(isStudentViewActive());
-    window.addEventListener('memora-student-view', sync);
-    return () => window.removeEventListener('memora-student-view', sync);
-  }, []);
+  const studentView = useStudentPreview();
   const navigate = useNavigate();
   const location = useLocation();
   const staff = isStaff(user?.role);
   const inStudentPreview = staff && studentView;
+
+  const studentPath = (path) => (inStudentPreview ? withPreviewQuery(path) : path);
 
   useEffect(() => {
     if (!user || staff) return;
@@ -41,13 +38,11 @@ export default function Layout({ children }) {
 
   const enterStudentPreview = () => {
     enableStudentView();
-    setStudentView(true);
-    navigate('/dashboard');
+    navigate(withPreviewQuery('/dashboard'));
   };
 
   const exitStudentPreview = () => {
     disableStudentView();
-    setStudentView(false);
     navigate('/admin');
   };
 
@@ -66,7 +61,7 @@ export default function Layout({ children }) {
     </Link>
   );
 
-  const logoTo = staff && !studentView ? '/admin' : '/dashboard';
+  const logoTo = staff && !studentView ? '/admin' : studentPath('/dashboard');
 
   return (
     <div className="min-h-screen">
@@ -96,9 +91,14 @@ export default function Layout({ children }) {
                 </>
               ) : staff && studentView ? (
                 <>
-                  {navLink('/dashboard', 'Dashboard')}
                   <Link
-                    to="/profile"
+                    to={studentPath('/dashboard')}
+                    className={`nav-link ${isActive('/dashboard') ? 'nav-link-active' : ''}`}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to={studentPath('/profile')}
                     className={`nav-link flex items-center gap-1.5 ${isActive('/profile') ? 'nav-link-active' : ''}`}
                   >
                     Profile

@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ProtectedRoute, StudentViewRoute, AdminRoute, GuestRoute } from './components/ProtectedRoute';
+import { useStudentPreview } from './hooks/useStudentPreview';
 import { isStaff } from './utils/roles';
-import { isStudentViewActive } from './utils/studentView';
 import Spinner from './components/ui/Spinner';
+import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
 import SubjectPage from './pages/SubjectPage';
 import StudyPage from './pages/StudyPage';
 import PracticePage from './pages/PracticePage';
@@ -21,37 +20,21 @@ import AdminUsers from './pages/admin/AdminUsers';
 
 function HomeRedirect() {
   const { user, loading } = useAuth();
+  const preview = useStudentPreview();
   if (loading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace />;
-  if (isStaff(user.role) && !isStudentViewActive()) {
+  if (isStaff(user.role) && !preview) {
     return <Navigate to="/admin" replace />;
   }
   return <Navigate to="/dashboard" replace />;
 }
 
 function DashboardRoute() {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const [preview, setPreview] = useState(isStudentViewActive);
-
-  useEffect(() => {
-    const sync = () => setPreview(isStudentViewActive());
-    window.addEventListener('memora-student-view', sync);
-    return () => window.removeEventListener('memora-student-view', sync);
-  }, []);
-
-  useEffect(() => {
-    if (!loading && user && isStaff(user.role) && !preview) {
-      navigate('/admin', { replace: true });
-    }
-  }, [loading, user, preview, navigate]);
-
-  if (loading) return <Spinner />;
-  if (!user) return <Navigate to="/login" replace />;
-  if (isStaff(user.role) && !preview) {
-    return <Navigate to="/admin" replace />;
-  }
-  return <Dashboard />;
+  return (
+    <StudentViewRoute>
+      <Dashboard />
+    </StudentViewRoute>
+  );
 }
 
 export default function App() {

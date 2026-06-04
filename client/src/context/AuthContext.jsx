@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api, getToken, setToken, removeToken } from '../utils/api';
-import { isStaff } from '../utils/roles';
 import { disableStudentView } from '../utils/studentView';
 
 const AuthContext = createContext(null);
@@ -18,9 +17,6 @@ export function AuthProvider({ children }) {
 
     try {
       const data = await api('/auth/me');
-      if (data.user && isStaff(data.user.role)) {
-        disableStudentView();
-      }
       setUser(data.user);
     } catch {
       removeToken();
@@ -40,9 +36,6 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ email, password }),
     });
     setToken(data.token);
-    if (isStaff(data.user?.role)) {
-      disableStudentView();
-    }
     setUser(data.user);
     return data.user;
   };
@@ -58,6 +51,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    disableStudentView();
     removeToken();
     setUser(null);
   };
