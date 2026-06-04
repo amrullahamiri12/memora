@@ -141,6 +141,16 @@ function parseAdminUserId(path) {
   return m ? m[1] : null;
 }
 
+function parseSubjectTopicsPath(path) {
+  const m = path.match(/(?:\/api)?\/subjects\/([^/]+)\/topics$/);
+  return m ? m[1] : null;
+}
+
+function parseTopicFlashcardsPath(path) {
+  const m = path.match(/(?:\/api)?\/topics\/([^/]+)\/flashcards$/);
+  return m ? m[1] : null;
+}
+
 function validateUserPayload(body, { requirePassword }) {
   const name = typeof body?.name === 'string' ? body.name.trim() : '';
   const email = typeof body?.email === 'string' ? body.email.trim() : '';
@@ -280,6 +290,213 @@ async function deleteAdminUser(actor, targetId) {
 
   await db.query('DELETE FROM users WHERE id = $1', [targetId]);
   return { status: 200, body: { message: 'User deleted' } };
+}
+
+async function subjectTopics(user, subjectId, query) {
+  const subjectRes = await db.query(
+    'SELECT id, name FROM subjects WHERE id = $1 LIMIT 1',
+    [subjectId]
+  );
+  if (!subjectRes.rows[0]) {
+    return { status: 404, body: { error: 'Subject not found' } };
+  }
+
+  if (!isStaff(user.role)) {
+    const enrolled = await db.query(
+      'SELECT 1 FROM user_subjects WHERE user_id = $1 AND subject_id = $2 LIMIT 1',
+      [user.id, subjectId]
+    );
+    if (!enrolled.rows[0]) {
+      return { status: 403, body: { error: 'You are not enrolled in this subject' } };
+    }
+  }
+
+  const usePagination = query.page != null || query.limit != null;
+  const { page, limit, skip } = parsePage(query, 12);
+
+  const countRes = await db.query(
+    'SELECT COUNT(*)::int AS total FROM topics WHERE subject_id = $1',
+    [subjectId]
+  );
+  const total = countRes.rows[0]?.total ?? 0;
+
+  const listRes = usePagination
+    ? await db.query(
+        `SELECT id, name FROM topics WHERE subject_id = $1 ORDER BY name ASC LIMIT $2 OFFSET $3`,
+        [subjectId, limit, skip]
+      )
+    : await db.query(
+        `SELECT id, name FROM topics WHERE subject_id = $1 ORDER BY name ASC`,
+        [subjectId]
+      );
+
+  const topicRows = listRes.rows;
+  const topicIds = topicRows.map((t) => t.id);
+
+  const cardsByTopic = new Map();
+  const masteredByTopic = new Map();
+  const needsPracticeByTopic = new Map();
+
+  if (topicIds.length > 0) {
+    const [cardsRes, progressRes] = await Promise.all([
+      db.query(
+        `SELECT topic_id, COUNT(*)::int AS cnt
+         FROM flashcards WHERE topic_id = ANY($1::text[]) GROUP BY topic_id`,
+        [topicIds]
+      ),
+      db.query(
+        `SELECT f.topic_id, up.status
+         FROM user_progress up
+         JOIN flashcards f ON up.flashcard_id = f.id
+         WHERE up.user_id = $1 AND f.topic_id = ANY($2::text[])`,
+        [user.id, topicIds]
+      ),
+    ]);
+
+    for (const row of cardsRes.rows) {
+      cardsByTopic.set(row.topic_id, row.cnt);
+    }
+    for (const row of progressRes.rows) {
+      if (row.status === 'GOT_IT') {
+        masteredByTopic.set(row.topic_id, (masteredByTopic.get(row.topic_id) || 0) + 1);
+      } else {
+        needsPracticeByTopic.set(
+          row.topic_id,
+          (needsPracticeByTopic.get(row.topic_id) || 0) + 1
+        );
+      }
+    }
+  }
+
+  const items = topicRows.map((topic) => {
+    const totalCards = cardsByTopic.get(topic.id) || 0;
+    const mastered = masteredByTopic.get(topic.id) || 0;
+    const needsPractice = needsPracticeByTopic.get(topic.id) || 0;
+    return {
+      id: topic.id,
+      name: topic.name,
+      totalCards,
+      mastered,
+      needsPractice,
+      progressPercent: totalCards > 0 ? Math.round((mastered / totalCards) * 100) : 0,
+    };
+  });
+
+  const subject = subjectRes.rows[0];
+  const body = {
+    id: subject.id,
+    name: subject.name,
+    topics: items,
+  };
+
+  if (usePagination) {
+    body.topicsPagination = paginatedResponse(items, total, { page, limit }).pagination;
+  }
+
+  return { status: 200, body };
+}
+
+async function topicFlashcards(user, topicId, query) {
+  const { preparePracticeCards } = require('./questionTypes');
+  const {
+    parseQuestionTypes,
+    filterByQuestionTypes,
+    orderCardsForStudy,
+  } = require('./studySession');
+  const { getMaxStudyCards } = require('./config');
+
+  const topicRes = await db.query(
+    `SELECT t.id, t.name, s.id AS subject_id, s.name AS subject_name
+     FROM topics t JOIN subjects s ON t.subject_id = s.id
+     WHERE t.id = $1 LIMIT 1`,
+    [topicId]
+  );
+  if (!topicRes.rows[0]) {
+    return { status: 404, body: { error: 'Topic not found' } };
+  }
+  const topic = topicRes.rows[0];
+
+  if (!isStaff(user.role)) {
+    const enrolled = await db.query(
+      'SELECT 1 FROM user_subjects WHERE user_id = $1 AND subject_id = $2 LIMIT 1',
+      [user.id, topic.subject_id]
+    );
+    if (!enrolled.rows[0]) {
+      return { status: 403, body: { error: 'You are not enrolled in this subject' } };
+    }
+  }
+
+  const mode = String(query.mode || 'learn').toLowerCase();
+  const shuffle = query.shuffle !== 'false';
+  const weakOnly = query.weakOnly === 'true';
+  const questionTypes = parseQuestionTypes(query.types);
+
+  const cardsRes = await db.query(
+    `SELECT id, question, answer, question_type AS "questionType",
+            distractor_1 AS "distractor1", distractor_2 AS "distractor2",
+            distractor_3 AS "distractor3", difficulty
+     FROM flashcards WHERE topic_id = $1`,
+    [topicId]
+  );
+  const allCards = cardsRes.rows;
+
+  const progressRes =
+    allCards.length > 0
+      ? await db.query(
+          `SELECT flashcard_id, status FROM user_progress
+           WHERE user_id = $1 AND flashcard_id = ANY($2::text[])`,
+          [user.id, allCards.map((c) => c.id)]
+        )
+      : { rows: [] };
+
+  const progressByCardId = new Map(
+    progressRes.rows.map((p) => [p.flashcard_id, { status: p.status }])
+  );
+
+  let cards = filterByQuestionTypes(allCards, questionTypes);
+  if (weakOnly) {
+    cards = cards.filter((c) => {
+      const p = progressByCardId.get(c.id);
+      return !p || p.status === 'NEEDS_PRACTICE';
+    });
+  }
+
+  cards = orderCardsForStudy(cards, progressByCardId, {
+    weakFirst: mode !== 'test',
+    shuffle,
+  });
+
+  let flashcards;
+  if (mode === 'flashcards') {
+    flashcards = cards.map((c) => ({
+      id: c.id,
+      question: c.question,
+      answer: c.answer,
+      difficulty: c.difficulty,
+      questionType: c.questionType,
+    }));
+  } else {
+    flashcards = preparePracticeCards(cards);
+  }
+
+  const maxCards = getMaxStudyCards();
+  const truncated = flashcards.length > maxCards;
+  if (truncated) {
+    flashcards = flashcards.slice(0, maxCards);
+  }
+
+  return {
+    status: 200,
+    body: {
+      id: topic.id,
+      name: topic.name,
+      subject: { id: topic.subject_id, name: topic.subject_name },
+      mode,
+      totalAvailable: allCards.length,
+      flashcards,
+      ...(truncated ? { truncated: true, maxCards } : {}),
+    },
+  };
 }
 
 async function dashboardSubjects(user) {
@@ -490,7 +707,9 @@ async function tryHandle(method, path, query, authHeader, body = null) {
     path.includes('/admin/') ||
     path.endsWith('/subjects') ||
     path.endsWith('/profile') ||
-    path.endsWith('/subjects/available');
+    path.endsWith('/subjects/available') ||
+    !!parseSubjectTopicsPath(path) ||
+    !!parseTopicFlashcardsPath(path);
 
   if (!needsAuth) return null;
 
@@ -511,6 +730,16 @@ async function tryHandle(method, path, query, authHeader, body = null) {
   if (adminUsersListPath(path)) {
     if (!isStaff(user.role)) return { status: 403, body: { error: 'Admin access required' } };
     return adminUsers(query);
+  }
+
+  const topicIdForFlashcards = parseTopicFlashcardsPath(path);
+  if (topicIdForFlashcards) {
+    return topicFlashcards(user, topicIdForFlashcards, query);
+  }
+
+  const subjectIdForTopics = parseSubjectTopicsPath(path);
+  if (subjectIdForTopics) {
+    return subjectTopics(user, subjectIdForTopics, query);
   }
 
   const subjectsPath = path.replace(/\/$/, '');

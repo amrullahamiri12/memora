@@ -64,7 +64,7 @@ export default function SubjectPage() {
         subtitle="Choose a topic, then pick how you want to study"
       />
 
-      {!topicsPagination?.total ? (
+      {(topicsPagination?.total ?? subject.topics?.length ?? 0) === 0 ? (
         <EmptyState message="No topics in this subject yet." actionLabel="Back to dashboard" actionTo="/dashboard" />
       ) : (
         <>
