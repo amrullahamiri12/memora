@@ -93,10 +93,20 @@ async function insertFlashcardBatch(client, cards) {
 
   await client.query(
     `INSERT INTO flashcards (id, topic_id, question_type, question, answer, distractor_1, distractor_2, distractor_3, difficulty)
-     SELECT * FROM UNNEST(
+     SELECT
+       row.id,
+       row.topic_id,
+       row.question_type::"QuestionType",
+       row.question,
+       row.answer,
+       row.distractor_1,
+       row.distractor_2,
+       row.distractor_3,
+       row.difficulty::"Difficulty"
+     FROM UNNEST(
        $1::text[], $2::text[], $3::text[], $4::text[], $5::text[],
        $6::text[], $7::text[], $8::text[], $9::text[]
-     )`,
+     ) AS row(id, topic_id, question_type, question, answer, distractor_1, distractor_2, distractor_3, difficulty)`,
     [ids, topicIds, types, questions, answers, d1, d2, d3, diffs]
   );
 }
