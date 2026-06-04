@@ -44,7 +44,7 @@ export async function api(path, options = {}) {
   } catch (err) {
     if (err.name === 'AbortError') {
       throw new Error(
-        'Request timed out. Check Vercel env vars (DATABASE_URL, DIRECT_URL, JWT_SECRET) and open /api/ping then /api/health on your site.'
+        'Request timed out. If /api/ping works, the database query is slow — check DATABASE_URL uses Supabase pooler (port 6543) and redeploy.'
       );
     }
     throw new Error(

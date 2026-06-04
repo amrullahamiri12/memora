@@ -12,7 +12,23 @@ function respondJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-/** Runs before Express/Prisma load — must stay dependency-free beyond serverless-http. */
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', (chunk) => {
+      data += chunk;
+    });
+    req.on('end', () => {
+      try {
+        resolve(data ? JSON.parse(data) : {});
+      } catch (err) {
+        reject(err);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
 function handleHealth(res) {
   const errors = [];
 
@@ -38,6 +54,33 @@ function handleHealth(res) {
   respondJson(res, 200, { status: 'ok', config: 'present' });
 }
 
+async function handleLogin(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const email = typeof body.email === 'string' ? body.email.trim() : '';
+    const password = typeof body.password === 'string' ? body.password : '';
+
+    if (!email || !password) {
+      respondJson(res, 400, { error: 'Email and password are required' });
+      return;
+    }
+
+    const { loginWithDatabase } = require('../server/lib/authServerless');
+    const result = await loginWithDatabase(email, password);
+    respondJson(res, result.status, result.body);
+  } catch (err) {
+    console.error('Fast login error:', err);
+    if (err.message?.includes('timeout') || err.code === 'ETIMEDOUT') {
+      respondJson(res, 503, {
+        error:
+          'Database connection timed out. Use the Supabase pooler URL (port 6543) for DATABASE_URL.',
+      });
+      return;
+    }
+    respondJson(res, 500, { error: 'Login failed' });
+  }
+}
+
 module.exports = (req, res) => {
   const path = requestPath(req);
 
@@ -48,6 +91,11 @@ module.exports = (req, res) => {
 
   if (path.endsWith('/health')) {
     handleHealth(res);
+    return;
+  }
+
+  if (req.method === 'POST' && path.endsWith('/auth/login')) {
+    handleLogin(req, res);
     return;
   }
 
