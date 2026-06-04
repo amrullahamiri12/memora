@@ -27,11 +27,6 @@ const VARIANTS = {
     width: 900,
     height: 667,
   },
-  landing: {
-    className: 'h-auto w-[11rem] max-w-full sm:w-[12.5rem]',
-    width: 900,
-    height: 667,
-  },
 };
 
 function logoMode(theme, variant) {

@@ -32,30 +32,34 @@ export default function Landing() {
         }}
       />
 
-      <header className="relative z-10 flex items-center justify-between px-6 py-5 sm:px-10">
-        <Logo to="/" variant="nav" />
-        <nav className="flex items-center gap-4 sm:gap-6">
-          <a
-            href="/api-docs.html"
-            className="hidden text-sm font-medium text-[var(--text-muted)] hover:text-[var(--accent)] sm:inline"
-          >
-            API docs
-          </a>
-          <ThemeToggle />
-          <Link
-            to="/login"
-            className="text-sm font-semibold text-[var(--accent)] hover:underline"
-          >
-            Sign in
-          </Link>
-        </nav>
+      <header
+        className="app-nav relative z-10 border-b backdrop-blur-xl"
+        style={{ background: 'var(--nav-bg)' }}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+          <div className="nav-brand">
+            <Logo to="/" variant="nav" />
+          </div>
+          <nav className="flex items-center gap-3 sm:gap-4">
+            <a
+              href="/api-docs.html"
+              className="hidden text-sm font-medium text-[var(--text-muted)] hover:text-[var(--accent)] sm:inline"
+            >
+              API docs
+            </a>
+            <ThemeToggle />
+            <Link
+              to="/login"
+              className="text-sm font-semibold text-[var(--accent)] hover:underline"
+            >
+              Sign in
+            </Link>
+          </nav>
+        </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-5xl px-6 pb-20 pt-6 sm:px-10 sm:pt-12">
-        <section className="page-enter text-center sm:text-left">
-          <div className="mb-6 flex justify-center sm:justify-start">
-            <Logo variant="landing" />
-          </div>
+      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-20 pt-10 page-enter">
+        <section>
           <p className="mb-4 inline-block rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">
             Flashcards · quizzes · tests
           </p>
@@ -64,11 +68,11 @@ export default function Landing() {
             <br />
             <span className="text-[var(--accent)]">remember longer.</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-[var(--text-muted)] sm:mx-0">
+          <p className="mt-5 max-w-xl text-lg leading-relaxed text-[var(--text-muted)]">
             Memora turns your subjects into adaptive practice — enroll in topics, run learn and test
             sessions, and track progress over time.
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:justify-start">
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <Link to="/register">
               <Button className="min-w-[10rem] px-8 py-3">Get started</Button>
             </Link>
@@ -128,16 +132,18 @@ export default function Landing() {
         </section>
       </main>
 
-      <footer className="relative z-10 border-t border-[var(--border)] px-6 py-6 text-center text-sm text-[var(--text-muted)] sm:px-10">
-        <a href="/api-docs.html" className="font-medium text-[var(--accent)] hover:underline sm:hidden">
-          API documentation
-        </a>
-        <p className="mt-2 sm:mt-0">
-          © {new Date().getFullYear()} Memora ·{' '}
-          <a href="https://memora.cards/" className="hover:text-[var(--accent)]">
-            memora.cards
+      <footer className="relative z-10 border-t border-[var(--border)]">
+        <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-[var(--text-muted)]">
+          <a href="/api-docs.html" className="font-medium text-[var(--accent)] hover:underline sm:hidden">
+            API documentation
           </a>
-        </p>
+          <p className="mt-2 sm:mt-0">
+            © {new Date().getFullYear()} Memora ·{' '}
+            <a href="https://memora.cards/" className="hover:text-[var(--accent)]">
+              memora.cards
+            </a>
+          </p>
+        </div>
       </footer>
     </div>
   );
