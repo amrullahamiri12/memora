@@ -1,0 +1,121 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ProgressStatus {
+  GOT_IT
+  NEEDS_PRACTICE
+}
+
+enum QuestionType {
+  MCQ
+  TRUE_FALSE
+  FILL_BLANK
+}
+
+model User {
+  id           String              @id @default(cuid())
+  name         String
+  email        String              @unique
+  passwordHash String              @map("password_hash")
+  role         Role                @default(USER)
+  createdAt    DateTime            @default(now()) @map("created_at")
+  progress      UserProgress[]
+  dailyPractice UserDailyPractice[]
+  subjects      UserSubject[]
+
+  @@map("users")
+}
+
+model Subject {
+  id     String        @id @default(cuid())
+  name   String        @unique
+  topics Topic[]
+  users  UserSubject[]
+
+  @@map("subjects")
+}
+
+model UserSubject {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  subjectId String   @map("subject_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, subjectId])
+  @@index([userId])
+  @@map("user_subjects")
+}
+
+model Topic {
+  id         String      @id @default(cuid())
+  subjectId  String      @map("subject_id")
+  name       String
+  subject    Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  flashcards Flashcard[]
+
+  @@unique([subjectId, name])
+  @@index([subjectId])
+  @@map("topics")
+}
+
+model Flashcard {
+  id           String         @id @default(cuid())
+  topicId      String         @map("topic_id")
+  questionType QuestionType   @default(MCQ) @map("question_type")
+  question     String
+  answer       String
+  distractor1  String?        @map("distractor_1")
+  distractor2  String?        @map("distractor_2")
+  distractor3  String?        @map("distractor_3")
+  difficulty   Difficulty
+  topic       Topic          @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  progress    UserProgress[]
+
+  @@index([topicId])
+  @@map("flashcards")
+}
+
+model UserProgress {
+  id           String         @id @default(cuid())
+  userId       String         @map("user_id")
+  flashcardId  String         @map("flashcard_id")
+  status       ProgressStatus
+  lastReviewed DateTime       @default(now()) @map("last_reviewed")
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashcard    Flashcard      @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, flashcardId])
+  @@index([userId])
+  @@map("user_progress")
+}
+
+model UserDailyPractice {
+  id     String   @id @default(cuid())
+  userId String   @map("user_id")
+  date   DateTime
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("user_daily_practice")
+}

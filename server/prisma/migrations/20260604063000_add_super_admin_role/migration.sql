@@ -1,0 +1,2 @@
+-- SQLite stores Role as TEXT; SUPER_ADMIN is valid without column changes.
+-- This migration records the enum update for Prisma Client generation.
