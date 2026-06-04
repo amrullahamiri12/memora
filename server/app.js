@@ -57,8 +57,10 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
+app.use('/api/auth', (req, res, next) => {
+  if (req.method === 'GET') return next();
+  return authLimiter(req, res, next);
+});
 app.use('/api/auth', lazy(() => require('./routes/auth')));
 app.use('/api/subjects', lazy(() => require('./routes/subjects')));
 app.use('/api/topics', lazy(() => require('./routes/topics')));

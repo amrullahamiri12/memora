@@ -193,6 +193,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST' && match(p, '/auth/close-account')) {
+      if (!applyRateLimit(res, checkAuthRateLimit(req))) return;
       const h = req.headers.authorization || req.headers.Authorization || '';
       if (!h.startsWith('Bearer ')) {
         return json(res, 401, { error: 'Authentication required' });

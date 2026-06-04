@@ -27,7 +27,10 @@ A full-stack flashcard web app for studying topics with progress tracking, strea
 - Paginated topic lists on profile and subject pages
 
 ### Admins
+- **Dashboard** at `/admin/dashboard` — KPI tiles, activity charts, operations panel, links to detailed reports
+- **Reports:** learner engagement (filters, CSV export) and content health by subject/topic
 - CRUD flashcards, subjects, topics, and users (role-based)
+- **Deactivate** users (soft delete; progress kept); super admins can **reactivate** and **verify email**
 - CSV import/export with search and pagination on the cards table
 - Super admin vs admin permission rules
 
@@ -258,10 +261,19 @@ Authenticated requests: `Authorization: Bearer <token>`.
 |--------|------|------|-------------|
 | POST | `/auth/register` | — | Register (`name`, `email`, `password`, `subjectIds[]`) |
 | POST | `/auth/login` | — | Login → `{ token, user }` |
+| POST | `/auth/guest` | — | Guest session → `{ token, user }` |
+| POST | `/auth/upgrade-guest` | User | Convert guest to registered account |
+| POST | `/auth/google` | — | Google ID token sign-in/register (`credential`, optional `subjectIds[]`) |
+| POST | `/auth/verify-email` | Optional | Verify with `token` from email link |
+| POST | `/auth/resend-verification` | User | Resend verification email |
+| POST | `/auth/forgot-password` | — | Request password reset email |
+| POST | `/auth/reset-password` | — | Reset password with `token` + `password` |
+| GET | `/auth/config` | — | `{ emailConfigured, googleConfigured, appUrl }` |
 | GET | `/auth/me` | User | Current user |
+| POST | `/auth/close-account` | User | Self-deactivate (optional `password` for email accounts) |
 | POST | `/auth/change-password` | User | Change password |
 
-Login and register are **rate-limited** (40 requests per 15 minutes per IP).
+Auth-related **POST** routes are **rate-limited** (40 requests per 15 minutes per IP).
 
 ### Subjects & topics
 
@@ -303,7 +315,10 @@ Query: `page`, `limit` (default 10 topics per page).
 | GET | `/admin/reports/overview` | Admin | KPIs, growth stats, DAU/WAU/MAU (`from`, `to` dates, UTC) |
 | GET | `/admin/reports/learners` | Admin | Learner engagement table (`page`, `limit`, `role`, `inactiveDays`, `includeInactive`; `format=csv` export) |
 | GET | `/admin/reports/content` | Admin | Content health by subject/topic with insight flags |
-| GET/POST/PUT/DELETE | `/admin/users` | Admin | Users (`page`, `limit` on GET) |
+| GET/POST/PUT/DELETE | `/admin/users` | Admin | Users (`page`, `limit`, `includeInactive` on GET) |
+| DELETE | `/admin/users/:id` | Admin | Deactivate user (not hard delete) |
+| POST | `/admin/users/:id/reactivate` | Super admin | Reactivate deactivated user |
+| POST | `/admin/users/:id/verify-email` | Super admin | Mark email verified |
 | GET/POST/PUT/DELETE | `/admin/flashcards` | Admin | Cards (`page`, `limit`, `search` on GET) |
 | POST | `/admin/flashcards/import` | Admin | Import CSV (`csv` string in JSON, max 2MB) |
 | GET | `/admin/flashcards/import/template` | Admin | Download template |
@@ -348,13 +363,19 @@ For `GET /subjects/:id/topics`, **omit** `page` and `limit` to return all topics
 
 - Passwords hashed with bcrypt (min **8** characters on register and password change)
 - JWT required for protected routes; admin routes also check role
+- **Deactivated** accounts cannot authenticate; learners may close their own account
+- Email verification required for study **writes** (progress, enroll) on verified email/password accounts
+- Google ID tokens verified server-side with `GOOGLE_CLIENT_ID`
 - Progress writes verify the user is enrolled in the card’s subject (or staff)
 - `helmet` HTTP security headers
-- Rate limits on auth and progress endpoints
-- Request body size capped at 2MB
-- `JWT_SECRET` validated at server startup
+- Rate limits on all auth **POST** routes and on progress POST
+- Request body size capped at 2MB; CSV import capped by `MAX_CSV_BYTES`
+- `JWT_SECRET` validated at server startup (≥ 32 characters in production)
+- Root `package.json` uses an **npm override** for transitive `uuid` (Google auth dependency chain)
 
 **Note:** Tokens are stored in `localStorage` in the browser. For high-security deployments, consider httpOnly cookies and HTTPS-only production.
+
+After editing [`docs/openapi.yaml`](docs/openapi.yaml), run `npm run sync:openapi` so the client build serves the same spec.
 
 ## CSV Import & Question Types
 

@@ -10,7 +10,11 @@ info:
 
     **Roles:** `USER`, `ADMIN`, `SUPER_ADMIN`. Staff (`ADMIN`, `SUPER_ADMIN`) see all subjects and can use admin routes.
 
-    **Vercel fast paths** (lightweight `pg`, avoid Express cold start): health, auth login/register/me, subjects catalog, GET subjects/profile, GET admin users/subjects/flashcards, POST flashcards import, POST/PUT/DELETE admin users. Other routes may load Express on first request.
+    **Rate limits:** Auth-related POST routes (login, register, guest, Google, password reset, verify, close account) — 40 requests per 15 minutes per IP. Progress POST — 150 requests per minute per IP.
+
+    **Account lifecycle:** Users are **deactivated** (not hard-deleted). Learners may **close** their own account. Super admins can **reactivate** deactivated users and **verify email** manually.
+
+    **Vercel fast paths** (lightweight `pg`, avoid Express cold start): health, most auth routes, subjects catalog, progress, admin reports, and many admin CRUD routes. Unmatched routes may load Express on first request.
 
     Interactive docs: https://memora.cards/api-docs.html · Raw spec: `/openapi.yaml`
   version: 1.0.0
@@ -32,6 +36,7 @@ tags:
   - name: Study
   - name: Progress
   - name: Profile
+  - name: Admin - Reports
   - name: Admin - Users
   - name: Admin - Subjects & Topics
   - name: Admin - Flashcards
@@ -63,6 +68,9 @@ components:
         hasPassword: { type: boolean }
         hasGoogle: { type: boolean }
         isGuest: { type: boolean }
+        active:
+          type: boolean
+          description: Present on admin user list; false when deactivated
     AuthResponse:
       type: object
       properties:
@@ -257,6 +265,50 @@ components:
       type: object
       properties:
         message: { type: string }
+    ReportOverview:
+      type: object
+      properties:
+        range:
+          type: object
+          properties:
+            from: { type: string, format: date }
+            to: { type: string, format: date }
+        kpis:
+          type: object
+          properties:
+            dau: { type: integer }
+            wau: { type: integer }
+            mau: { type: integer }
+            registeredActive: { type: integer }
+            newSignups: { type: integer }
+            cardsReviewedInRange: { type: integer }
+            avgMasteryPercent: { type: integer }
+        growth:
+          type: object
+          properties:
+            signupsThisWeek: { type: integer }
+            signupsThisMonth: { type: integer }
+            verifiedUsers: { type: integer }
+            pendingVerification: { type: integer }
+            deactivatedUsers: { type: integer }
+            guestAccounts: { type: integer }
+        series:
+          type: object
+          properties:
+            dailyActive:
+              type: array
+              items:
+                type: object
+                properties:
+                  date: { type: string }
+                  active_learners: { type: integer }
+            weeklySignups:
+              type: array
+              items:
+                type: object
+                properties:
+                  week: { type: string }
+                  signups: { type: integer }
 
 paths:
   /health:
@@ -426,6 +478,48 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
+  /auth/guest:
+    post:
+      tags: [Auth]
+      summary: Start a guest session (no email/password)
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/upgrade-guest:
+    post:
+      tags: [Auth]
+      summary: Convert guest account to registered user
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400':
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /auth/google:
     post:
       tags: [Auth]
@@ -453,6 +547,46 @@ paths:
                     properties:
                       needsSubjectSetup: { type: boolean }
         '400':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/config:
+    get:
+      tags: [Auth]
+      summary: Public auth feature flags (email/Google configured)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  emailConfigured: { type: boolean }
+                  googleConfigured: { type: boolean }
+                  appUrl: { type: string }
+
+  /auth/close-account:
+    post:
+      tags: [Auth]
+      summary: Close own account (self-deactivate)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  description: Required for password-based accounts
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+        '400':
+        '403':
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -691,7 +825,10 @@ paths:
           description: End date (UTC, YYYY-MM-DD). Default today.
       responses:
         '200':
-          description: KPIs, growth stats, and chart series
+          description: KPIs, growth stats, and chart series for admin dashboard
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportOverview' }
         '403':
           content:
             application/json:
@@ -755,6 +892,10 @@ paths:
         - name: limit
           in: query
           schema: { type: integer, default: 15 }
+        - name: includeInactive
+          in: query
+          schema: { type: string, enum: ['0', '1'] }
+          description: Include deactivated users when `1`
       responses:
         '200':
           content:
@@ -827,7 +968,7 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
     delete:
       tags: [Admin - Users]
-      summary: Delete user
+      summary: Deactivate user (soft delete; progress retained)
       security: [{ bearerAuth: [] }]
       parameters:
         - name: userId
@@ -838,8 +979,62 @@ paths:
         '200':
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Message' }
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
         '400':
+        '403':
+        '404':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/users/{userId}/reactivate:
+    post:
+      tags: [Admin - Users]
+      summary: Reactivate deactivated user (super admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+        '403':
+        '404':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/users/{userId}/verify-email:
+    post:
+      tags: [Admin - Users]
+      summary: Mark user email verified (super admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
         '403':
         '404':
           content:

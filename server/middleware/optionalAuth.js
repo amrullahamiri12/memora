@@ -12,9 +12,9 @@ async function optionalAuth(req, res, next) {
     const payload = jwt.verify(authHeader.slice(7), process.env.JWT_SECRET);
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, name: true, email: true, role: true },
+      select: { id: true, name: true, email: true, role: true, deactivatedAt: true },
     });
-    if (user) req.user = user;
+    if (user && !user.deactivatedAt) req.user = user;
   } catch {
     /* ignore invalid token */
   }

@@ -145,6 +145,10 @@ router.post('/google', async (req, res) => {
   }
 });
 
+router.get('/config', async (_req, res) => {
+  send(res, fastAuth.authConfig());
+});
+
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     send(res, await fastAuth.me(req.user.id));

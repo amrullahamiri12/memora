@@ -315,6 +315,32 @@ router.post('/users/:id/reactivate', async (req, res) => {
   }
 });
 
+router.post('/users/:id/verify-email', async (req, res) => {
+  try {
+    if (req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Super admin access required' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.params.id },
+      data: {
+        emailVerifiedAt: new Date(),
+        verificationTokenHash: null,
+        verificationTokenExpires: null,
+      },
+      select: userSelect,
+    });
+
+    res.json({ message: 'Email marked as verified', user: formatAdminUser(user) });
+  } catch (err) {
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    console.error(err);
+    res.status(500).json({ error: 'Failed to verify email' });
+  }
+});
+
 router.get('/subjects', async (_req, res) => {
   try {
     const subjects = await prisma.subject.findMany({
