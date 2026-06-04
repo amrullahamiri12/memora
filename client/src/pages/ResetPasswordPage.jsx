@@ -32,7 +32,7 @@ export default function ResetPasswordPage() {
     setLoading(true);
     try {
       const user = await resetPassword(token, password);
-      navigate(isStaff(user.role) ? '/admin' : '/dashboard', { replace: true });
+      navigate(isStaff(user.role) ? '/admin/reports' : '/dashboard', { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {

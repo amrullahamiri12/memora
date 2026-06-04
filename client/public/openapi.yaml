@@ -675,6 +675,74 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ProfileResponse' }
 
+  /admin/reports/overview:
+    get:
+      tags: [Admin - Reports]
+      summary: Report overview (KPIs and trends)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+          description: Start date (UTC, YYYY-MM-DD). Default last 30 days.
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+          description: End date (UTC, YYYY-MM-DD). Default today.
+      responses:
+        '200':
+          description: KPIs, growth stats, and chart series
+        '403':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/reports/learners:
+    get:
+      tags: [Admin - Reports]
+      summary: Learner engagement report
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: role
+          in: query
+          schema: { type: string, enum: [USER, ADMIN, SUPER_ADMIN, ALL], default: USER }
+        - name: inactiveDays
+          in: query
+          schema: { type: integer, enum: [7, 14, 30] }
+        - name: includeInactive
+          in: query
+          schema: { type: string, enum: ['0', '1'] }
+        - name: format
+          in: query
+          schema: { type: string, enum: [csv] }
+          description: Return CSV instead of JSON when set to csv
+      responses:
+        '200':
+          description: Paginated learners or CSV file
+        '403':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /admin/reports/content:
+    get:
+      tags: [Admin - Reports]
+      summary: Content health by subject and topic
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Subjects with nested topics and insight lists
+        '403':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /admin/users:
     get:
       tags: [Admin - Users]

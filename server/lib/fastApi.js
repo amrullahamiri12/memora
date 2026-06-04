@@ -873,6 +873,27 @@ async function tryHandle(method, path, query, authHeader, body = null) {
   if (auth.error) return auth.error;
   const { user } = auth;
 
+  const reportsKind = parseAdminReportsPath(path);
+  if (reportsKind) {
+    if (!isStaff(user.role)) {
+      return { status: 403, body: { error: 'Admin access required' } };
+    }
+    const reports = require('./adminReports');
+    if (reportsKind === 'overview') {
+      return { status: 200, body: await reports.getOverview(query) };
+    }
+    if (reportsKind === 'learners') {
+      const result = await reports.getLearners(query);
+      if (result.csv) {
+        return { status: 200, csv: result.csv, filename: result.filename };
+      }
+      return { status: 200, body: result };
+    }
+    if (reportsKind === 'content') {
+      return { status: 200, body: await reports.getContent() };
+    }
+  }
+
   if (match(path, '/admin/flashcards') && !path.includes('/import') && !path.includes('/export')) {
     if (!isStaff(user.role)) return { status: 403, body: { error: 'Admin access required' } };
     return adminFlashcards(query);
@@ -950,6 +971,20 @@ function parseAdminUserVerifyPath(path) {
 function parseAdminUserReactivatePath(path) {
   const m = path.match(/\/admin\/users\/([^/]+)\/reactivate\/?$/);
   return m ? m[1] : null;
+}
+
+function parseAdminReportsPath(path) {
+  const normalized = path.replace(/\/$/, '');
+  if (normalized === '/admin/reports/overview' || normalized === '/api/admin/reports/overview') {
+    return 'overview';
+  }
+  if (normalized === '/admin/reports/learners' || normalized === '/api/admin/reports/learners') {
+    return 'learners';
+  }
+  if (normalized === '/admin/reports/content' || normalized === '/api/admin/reports/content') {
+    return 'content';
+  }
+  return null;
 }
 
 module.exports = { tryHandle };

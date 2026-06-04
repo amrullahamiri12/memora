@@ -28,6 +28,7 @@ const adminMiddleware = require('../middleware/admin');
 const validate = require('../middleware/validate');
 const { parsePagination, paginatedResponse } = require('../lib/pagination');
 const { getMaxCsvBytes } = require('../lib/config');
+const { getOverview, getLearners, getContent } = require('../lib/adminReports');
 
 const router = express.Router();
 
@@ -132,6 +133,39 @@ const userValidators = [
     .isIn(['USER', 'ADMIN', 'SUPER_ADMIN'])
     .withMessage('Role must be USER, ADMIN, or SUPER_ADMIN'),
 ];
+
+router.get('/reports/overview', async (req, res) => {
+  try {
+    res.json(await getOverview(req.query));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load report overview' });
+  }
+});
+
+router.get('/reports/learners', async (req, res) => {
+  try {
+    const result = await getLearners(req.query);
+    if (result.csv) {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+      return res.send(result.csv);
+    }
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load learner report' });
+  }
+});
+
+router.get('/reports/content', async (req, res) => {
+  try {
+    res.json(await getContent());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load content report' });
+  }
+});
 
 router.get('/users', async (req, res) => {
   try {

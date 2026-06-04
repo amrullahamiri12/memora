@@ -18,6 +18,9 @@ import AccountPage from './pages/AccountPage';
 import AdminFlashcards from './pages/admin/AdminFlashcards';
 import AdminSubjects from './pages/admin/AdminSubjects';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminReports from './pages/admin/AdminReports';
+import AdminReportsLearners from './pages/admin/AdminReportsLearners';
+import AdminReportsContent from './pages/admin/AdminReportsContent';
 import Landing from './pages/Landing';
 import { isGuestUser } from './utils/guest';
 import GuestSetupPage from './pages/GuestSetupPage';
@@ -39,7 +42,7 @@ function Home() {
   }
   if (!user) return <Landing />;
   if (isStaff(user.role) && !preview) {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to="/admin/reports" replace />;
   }
   if (isGuestUser(user)) {
     return <Navigate to="/guest/setup" replace />;
@@ -152,8 +155,33 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+          <Route path="/admin" element={<Navigate to="/admin/reports" replace />} />
           <Route
-            path="/admin"
+            path="/admin/reports"
+            element={
+              <AdminRoute>
+                <AdminReports />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/reports/learners"
+            element={
+              <AdminRoute>
+                <AdminReportsLearners />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/reports/content"
+            element={
+              <AdminRoute>
+                <AdminReportsContent />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/cards"
             element={
               <AdminRoute>
                 <AdminFlashcards />

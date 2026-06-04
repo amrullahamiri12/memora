@@ -300,6 +300,9 @@ Query: `page`, `limit` (default 10 topics per page).
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
+| GET | `/admin/reports/overview` | Admin | KPIs, growth stats, DAU/WAU/MAU (`from`, `to` dates, UTC) |
+| GET | `/admin/reports/learners` | Admin | Learner engagement table (`page`, `limit`, `role`, `inactiveDays`, `includeInactive`; `format=csv` export) |
+| GET | `/admin/reports/content` | Admin | Content health by subject/topic with insight flags |
 | GET/POST/PUT/DELETE | `/admin/users` | Admin | Users (`page`, `limit` on GET) |
 | GET/POST/PUT/DELETE | `/admin/flashcards` | Admin | Cards (`page`, `limit`, `search` on GET) |
 | POST | `/admin/flashcards/import` | Admin | Import CSV (`csv` string in JSON, max 2MB) |
@@ -318,6 +321,8 @@ Query: `page`, `limit` (default 10 topics per page).
 
 Staff roles bypass subject enrollment and see all subjects.
 
+**Admin UI:** Staff land on **Reports** (`/admin/reports`) with KPIs and charts. **Learner engagement** and **Content health** are under `/admin/reports/learners` and `/admin/reports/content`. Flashcard CRUD moved to `/admin/cards` ( `/admin` redirects to reports).
+
 ### Pagination
 
 Admin list endpoints return:
@@ -333,6 +338,7 @@ Admin list endpoints return:
 |----------|-----------------|
 | `GET /admin/flashcards` | 20 |
 | `GET /admin/users` | 15 |
+| `GET /admin/reports/learners` | 20 |
 | `GET /profile` (topics) | 10 |
 | `GET /subjects/:id/topics` | 12 (only when `page` or `limit` is sent) |
 

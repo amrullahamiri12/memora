@@ -227,7 +227,16 @@ module.exports = async (req, res) => {
       authHeader,
       body
     );
-    if (fast) return json(res, fast.status, fast.body);
+    if (fast) {
+      if (fast.csv) {
+        res.statusCode = fast.status;
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${fast.filename}"`);
+        res.end(fast.csv);
+        return;
+      }
+      return json(res, fast.status, fast.body);
+    }
   } catch (err) {
     console.error('API error:', p, err);
     return json(res, 500, GENERIC_SERVER_ERROR);

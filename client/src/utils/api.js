@@ -64,3 +64,27 @@ export async function api(path, options = {}) {
 
   return data;
 }
+
+/** Download a CSV (or other file) from an authenticated API path. */
+export async function downloadAuthenticatedFile(path) {
+  const token = getToken();
+  const res = await fetch(apiUrl(path), {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Download failed (${res.status})`);
+  }
+  const disposition = res.headers.get('Content-Disposition');
+  const filename =
+    disposition?.match(/filename="([^"]+)"/)?.[1] ||
+    disposition?.match(/filename=([^;\s]+)/)?.[1] ||
+    'export.csv';
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
