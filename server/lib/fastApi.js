@@ -51,7 +51,8 @@ async function adminFlashcards(query) {
     ${where}`;
   const listSql = `
     SELECT f.id, f.question_type AS "questionType", f.question, f.answer,
-           f.distractor1, f.distractor2, f.distractor3, f.difficulty,
+           f.distractor_1 AS "distractor1", f.distractor_2 AS "distractor2",
+           f.distractor_3 AS "distractor3", f.difficulty,
            t.id AS "topicId", t.name AS "topicName",
            s.id AS "subjectId", s.name AS "subjectName"
     FROM flashcards f
