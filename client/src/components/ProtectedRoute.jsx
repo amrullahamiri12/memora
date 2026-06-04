@@ -1,4 +1,5 @@
-import { Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isStaff } from '../utils/roles';
 import { isStudentViewActive } from '../utils/studentView';
@@ -19,6 +20,20 @@ export function ProtectedRoute({ children }) {
 /** Study app routes — staff need "Preview as student" enabled. */
 export function StudentViewRoute({ children }) {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const [preview, setPreview] = useState(isStudentViewActive);
+
+  useEffect(() => {
+    const sync = () => setPreview(isStudentViewActive());
+    window.addEventListener('memora-student-view', sync);
+    return () => window.removeEventListener('memora-student-view', sync);
+  }, []);
+
+  useEffect(() => {
+    if (!loading && user && isStaff(user.role) && !preview) {
+      navigate('/admin', { replace: true });
+    }
+  }, [loading, user, preview, navigate]);
 
   if (loading) return <Spinner />;
 
@@ -26,7 +41,7 @@ export function StudentViewRoute({ children }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (isStaff(user.role) && !isStudentViewActive()) {
+  if (isStaff(user.role) && !preview) {
     return <Navigate to="/admin" replace />;
   }
 

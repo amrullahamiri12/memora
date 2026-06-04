@@ -15,6 +15,12 @@ export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const [streak, setStreak] = useState(0);
   const [studentView, setStudentView] = useState(isStudentViewActive);
+
+  useEffect(() => {
+    const sync = () => setStudentView(isStudentViewActive());
+    window.addEventListener('memora-student-view', sync);
+    return () => window.removeEventListener('memora-student-view', sync);
+  }, []);
   const navigate = useNavigate();
   const location = useLocation();
   const staff = isStaff(user?.role);

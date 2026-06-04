@@ -6,10 +6,12 @@ export function isStudentViewActive() {
 
 export function enableStudentView() {
   sessionStorage.setItem(STORAGE_KEY, '1');
+  window.dispatchEvent(new Event('memora-student-view'));
 }
 
 export function disableStudentView() {
   sessionStorage.removeItem(STORAGE_KEY);
+  window.dispatchEvent(new Event('memora-student-view'));
 }
 
 /** Regular users always; staff only when preview mode is on. */

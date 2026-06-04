@@ -1,21 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ProtectedRoute, StudentViewRoute, AdminRoute, GuestRoute } from './components/ProtectedRoute';
-import { useAuth } from './context/AuthContext';
 import { isStaff } from './utils/roles';
 import { isStudentViewActive } from './utils/studentView';
 import Spinner from './components/ui/Spinner';
-
-function HomeRedirect() {
-  const { user, loading } = useAuth();
-  if (loading) return <Spinner />;
-  if (!user) return <Navigate to="/login" replace />;
-  if (isStaff(user.role) && !isStudentViewActive()) {
-    return <Navigate to="/admin" replace />;
-  }
-  return <Navigate to="/dashboard" replace />;
-}
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -28,6 +18,41 @@ import AccountPage from './pages/AccountPage';
 import AdminFlashcards from './pages/admin/AdminFlashcards';
 import AdminSubjects from './pages/admin/AdminSubjects';
 import AdminUsers from './pages/admin/AdminUsers';
+
+function HomeRedirect() {
+  const { user, loading } = useAuth();
+  if (loading) return <Spinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (isStaff(user.role) && !isStudentViewActive()) {
+    return <Navigate to="/admin" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
+}
+
+function DashboardRoute() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const [preview, setPreview] = useState(isStudentViewActive);
+
+  useEffect(() => {
+    const sync = () => setPreview(isStudentViewActive());
+    window.addEventListener('memora-student-view', sync);
+    return () => window.removeEventListener('memora-student-view', sync);
+  }, []);
+
+  useEffect(() => {
+    if (!loading && user && isStaff(user.role) && !preview) {
+      navigate('/admin', { replace: true });
+    }
+  }, [loading, user, preview, navigate]);
+
+  if (loading) return <Spinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (isStaff(user.role) && !preview) {
+    return <Navigate to="/admin" replace />;
+  }
+  return <Dashboard />;
+}
 
 export default function App() {
   return (
@@ -52,14 +77,7 @@ export default function App() {
               </GuestRoute>
             }
           />
-          <Route
-            path="/dashboard"
-            element={
-              <StudentViewRoute>
-                <Dashboard />
-              </StudentViewRoute>
-            }
-          />
+          <Route path="/dashboard" element={<DashboardRoute />} />
           <Route
             path="/subjects/:id"
             element={
