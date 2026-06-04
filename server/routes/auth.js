@@ -86,7 +86,7 @@ router.post(
 
 router.post('/verify-email', async (req, res) => {
   try {
-    send(res, await fastAuth.verifyEmail(req.body.token));
+    send(res, await fastAuth.verifyEmail(req.body.token, { userId: req.user?.userId }));
   } catch (err) {
     console.error('Verify email error:', err);
     res.status(500).json({ error: 'Verification failed' });
