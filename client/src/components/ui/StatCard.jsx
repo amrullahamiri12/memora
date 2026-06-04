@@ -14,7 +14,7 @@ export default function StatCard({ value, label, accent = 'default' }) {
       <p className={`text-3xl font-bold font-display ${accentColors[accent] || accentColors.default}`}>
         {value}
       </p>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">{label}</p>
+      <p className="mt-1 text-sm font-medium text-[var(--text-muted)]">{label}</p>
     </div>
   );
 }

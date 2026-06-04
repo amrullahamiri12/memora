@@ -4,9 +4,9 @@ export default function ProgressBar({ percent, label }) {
   return (
     <div className="w-full">
       {label && (
-        <div className="mb-1.5 flex justify-between text-sm text-[var(--text-muted)]">
-          <span>{label}</span>
-          <span className="font-medium text-[var(--accent)]">{clamped}%</span>
+        <div className="mb-1.5 flex justify-between text-sm">
+          <span className="text-[var(--text-muted)]">{label}</span>
+          <span className="font-semibold text-[var(--text-heading)]">{clamped}%</span>
         </div>
       )}
       <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--border)]">
