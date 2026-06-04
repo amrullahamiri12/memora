@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import Logo from '../components/Logo';
 import Button from '../components/ui/Button';
 import ThemeToggle from '../components/ThemeToggle';
+import ContinueAsGuestButton from '../components/ContinueAsGuestButton';
 
 const FEATURES = [
   {
@@ -72,15 +73,18 @@ export default function Landing() {
             Memora turns your subjects into adaptive practice — enroll in topics, run learn and test
             sessions, and track progress over time.
           </p>
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <Link to="/register">
-              <Button className="min-w-[10rem] px-8 py-3">Get started</Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="secondary" className="min-w-[10rem] px-8 py-3">
-                Sign in
-              </Button>
-            </Link>
+          <div className="mt-10 flex max-w-md flex-col gap-3 sm:max-w-none">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link to="/register">
+                <Button className="min-w-[10rem] w-full px-8 py-3 sm:w-auto">Get started</Button>
+              </Link>
+              <Link to="/login">
+                <Button variant="secondary" className="min-w-[10rem] w-full px-8 py-3 sm:w-auto">
+                  Sign in
+                </Button>
+              </Link>
+            </div>
+            <ContinueAsGuestButton />
           </div>
         </section>
 

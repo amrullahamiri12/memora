@@ -50,6 +50,26 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
+  const continueAsGuest = async () => {
+    const data = await api('/auth/guest', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    setToken(data.token);
+    setUser(data.user);
+    return data.user;
+  };
+
+  const upgradeGuest = async (name, email, password) => {
+    const data = await api('/auth/upgrade-guest', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password }),
+    });
+    setToken(data.token);
+    setUser(data.user);
+    return data;
+  };
+
   const logout = () => {
     disableStudentView();
     removeToken();
@@ -57,7 +77,9 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, register, continueAsGuest, upgradeGuest, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

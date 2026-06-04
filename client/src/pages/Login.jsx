@@ -8,6 +8,7 @@ import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
 import AuthPageTopBar from '../components/AuthPageTopBar';
 import AuthFormHeader from '../components/AuthFormHeader';
+import ContinueAsGuestButton from '../components/ContinueAsGuestButton';
 
 export default function Login() {
   const { login } = useAuth();
@@ -71,6 +72,10 @@ export default function Login() {
               Sign in
             </Button>
           </form>
+
+          <div className="mt-8 border-t border-[var(--border)] pt-8">
+            <ContinueAsGuestButton />
+          </div>
 
           <p className="mt-8 text-center text-sm text-[var(--text-muted)]">
             Don&apos;t have an account?{' '}

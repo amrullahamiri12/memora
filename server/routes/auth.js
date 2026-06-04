@@ -6,6 +6,7 @@ const prisma = require('../lib/prisma');
 const authMiddleware = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const { enrollUserInSubjects } = require('../lib/userSubjects');
+const { createGuest, upgradeGuest, withGuestFlag, isGuestEmail } = require('../lib/guestAuth');
 
 const router = express.Router();
 
@@ -51,7 +52,7 @@ router.post(
         expiresIn: process.env.JWT_EXPIRES_IN || '7d',
       });
 
-      res.status(201).json({ token, user });
+      res.status(201).json({ token, user: withGuestFlag(user) });
     } catch (err) {
       console.error('Register error:', err);
       if (err.code === 'P1001' || err.code === 'P1000' || err.code === 'P1017') {
@@ -91,12 +92,12 @@ router.post(
 
       res.json({
         token,
-        user: {
+        user: withGuestFlag({
           id: user.id,
           name: user.name,
           email: user.email,
           role: user.role,
-        },
+        }),
       });
     } catch (err) {
       console.error('Login error:', err);
@@ -110,8 +111,40 @@ router.post(
   }
 );
 
+router.post('/guest', async (req, res) => {
+  try {
+    const result = await createGuest();
+    res.status(result.status).json(result.body);
+  } catch (err) {
+    console.error('Guest auth error:', err);
+    res.status(500).json({ error: 'Could not start guest session' });
+  }
+});
+
+router.post(
+  '/upgrade-guest',
+  authMiddleware,
+  [
+    body('name').trim().notEmpty().withMessage('Name is required'),
+    body('email').isEmail().withMessage('Valid email is required'),
+    body('password')
+      .isLength({ min: 8 })
+      .withMessage('Password must be at least 8 characters'),
+  ],
+  validate,
+  async (req, res) => {
+    try {
+      const result = await upgradeGuest(req.user.id, req.body);
+      res.status(result.status).json(result.body);
+    } catch (err) {
+      console.error('Upgrade guest error:', err);
+      res.status(500).json({ error: 'Failed to create account' });
+    }
+  }
+);
+
 router.get('/me', authMiddleware, (req, res) => {
-  res.json({ user: req.user });
+  res.json({ user: withGuestFlag(req.user) });
 });
 
 router.post(
@@ -134,6 +167,12 @@ router.post(
       const user = await prisma.user.findUnique({ where: { id: req.user.id } });
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (isGuestEmail(user.email)) {
+        return res.status(400).json({
+          error: 'Guest accounts cannot change password. Create your account from Account settings.',
+        });
       }
 
       const valid = await bcrypt.compare(currentPassword, user.passwordHash);

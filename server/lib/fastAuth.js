@@ -3,7 +3,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('./pg');
 
+const { withGuestFlag, createGuest, upgradeGuest } = require('./guestAuth');
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function publicUser(user) {
+  return withGuestFlag(user);
+}
 
 async function login(email, password) {
   const { rows } = await db.query(
@@ -24,7 +30,7 @@ async function login(email, password) {
     status: 200,
     body: {
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: publicUser(user),
     },
   };
 }
@@ -79,7 +85,7 @@ async function register({ name, email, password, subjectIds }) {
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || '7d',
     });
-    return { status: 201, body: { token, user } };
+    return { status: 201, body: { token, user: publicUser(user) } };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -94,7 +100,7 @@ async function me(userId) {
     [userId]
   );
   if (!rows[0]) return { status: 401, body: { error: 'User not found' } };
-  return { status: 200, body: { user: rows[0] } };
+  return { status: 200, body: { user: publicUser(rows[0]) } };
 }
 
 async function catalog() {
@@ -108,4 +114,4 @@ async function catalog() {
   return rows;
 }
 
-module.exports = { login, register, me, catalog };
+module.exports = { login, register, me, catalog, createGuest, upgradeGuest };

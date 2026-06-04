@@ -121,14 +121,19 @@ async function adminSubjects() {
   return { status: 200, body: Array.from(map.values()) };
 }
 
+const GUEST_EMAIL_PATTERN = '%@guest.memora.local';
+
 async function adminUsers(query) {
   const { page, limit, skip } = parsePage(query, 15);
   const [countRes, listRes] = await Promise.all([
-    db.query('SELECT COUNT(*)::int AS total FROM users'),
+    db.query(`SELECT COUNT(*)::int AS total FROM users WHERE email NOT LIKE $1`, [
+      GUEST_EMAIL_PATTERN,
+    ]),
     db.query(
       `SELECT id, name, email, role, created_at AS "createdAt"
-       FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
-      [limit, skip]
+       FROM users WHERE email NOT LIKE $3
+       ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+      [limit, skip, GUEST_EMAIL_PATTERN]
     ),
   ]);
   const total = countRes.rows[0]?.total ?? 0;

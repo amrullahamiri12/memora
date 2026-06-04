@@ -11,6 +11,8 @@ import AddSubjectsPanel from '../components/AddSubjectsPanel';
 import { SubjectCardSkeleton } from '../components/ui/Skeleton';
 import { api } from '../utils/api';
 import { getLastTopic, subjectAccent } from '../utils/studyStorage';
+import { isGuestUser } from '../utils/guest';
+import GuestBanner from '../components/GuestBanner';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -47,6 +49,8 @@ export default function Dashboard() {
         title={user?.name ? `Welcome back, ${user.name.split(' ')[0]}` : 'Your Subjects'}
         subtitle="Your enrolled subjects — add more anytime below"
       />
+
+      {isGuestUser(user) && <GuestBanner />}
 
       {error && <Alert>{error}</Alert>}
 
