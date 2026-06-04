@@ -1,4 +1,6 @@
 server/prisma/dev.db
 server/prisma/dev.db-journal
 server/.env
+server/tests
+server/vitest.config.js
 client/node_modules

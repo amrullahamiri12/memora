@@ -421,7 +421,9 @@ npm run db:seed             # seed admin + sample cards
 
 ## Testing & CI
 
-Tests run **before every Vercel production build** (`build:vercel` starts with `npm run test`). [GitHub Actions](.github/workflows/ci.yml) also runs on pushes and PRs to `main`.
+Tests run on every push to `main` via [GitHub Actions](.github/workflows/ci.yml). Vercel builds skip tests (same gate already passed on push) to keep the serverless bundle lean.
+
+**Vercel function size:** Do not use `includeFiles: server/**` — that copies all of `server/node_modules` (~300MB+) and exceeds the 250MB limit. The API relies on file tracing from `api/index.js` instead.
 
 | Layer | Tool | What is covered |
 |-------|------|-----------------|

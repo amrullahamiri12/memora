@@ -8,7 +8,7 @@
     "test": "npm run test --prefix server && npm run test --prefix client",
     "ci": "npm run test && npm run build --prefix client",
     "lint": "npm run lint --prefix client",
-    "build:vercel": "npm run test && npm run sync:openapi && cd server && npx prisma generate && if [ -n \"$DATABASE_URL\" ]; then npx prisma db push --skip-generate; fi && if [ \"$SEED_ON_BUILD\" = \"true\" ]; then node -r dotenv/config prisma/seed.js; fi && cd ../client && npx vite build"
+    "build:vercel": "bash scripts/build-vercel.sh"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
