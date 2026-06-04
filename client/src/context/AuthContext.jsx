@@ -109,6 +109,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ credential, subjectIds }),
     });
     const nextUser = applyAuthResponse(data);
+    setUser(nextUser);
     if (nextUser?.email) rememberGoogleSignIn(nextUser.email);
     return data;
   };
@@ -129,7 +130,7 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ password: password || undefined }),
     });
-    logout();
+    await logout();
     return data;
   };
 
