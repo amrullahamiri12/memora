@@ -105,7 +105,7 @@ export default function Layout({ children }) {
                     onClick={enterStudentPreview}
                     className="nav-link text-[var(--accent)]"
                   >
-                    View as learner
+                    Learner view
                   </button>
                 </>
               ) : staff && studentView ? (
@@ -151,7 +151,7 @@ export default function Layout({ children }) {
               <span className="hidden rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-medium text-[var(--text-muted)] sm:inline">
                 {user?.name}
                 {inStudentPreview && (
-                  <span className="ml-1.5 text-[var(--accent)]">· learner view</span>
+                  <span className="ml-1.5 text-[var(--accent)]">· Learner view</span>
                 )}
               </span>
               <ThemeToggle />
