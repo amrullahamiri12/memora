@@ -30,11 +30,22 @@ async function submitContact(body) {
   if (!validated.ok) return validated;
 
   const contactEmail = process.env.CONTACT_EMAIL?.trim();
-  if (!process.env.RESEND_API_KEY || !contactEmail) {
+  const resendKey = process.env.RESEND_API_KEY?.trim();
+  if (!resendKey || !contactEmail) {
+    const missing = [
+      !resendKey && 'RESEND_API_KEY',
+      !contactEmail && 'CONTACT_EMAIL',
+    ].filter(Boolean);
+    const devHint =
+      process.env.NODE_ENV !== 'production' && !process.env.VERCEL
+        ? ` Add ${missing.join(' and ')} to server/.env (see server/.env.example).`
+        : '';
     return {
       ok: false,
       status: 503,
-      body: { error: 'Contact form is not configured on the server yet' },
+      body: {
+        error: `Contact form is not configured on the server yet.${devHint}`,
+      },
     };
   }
 

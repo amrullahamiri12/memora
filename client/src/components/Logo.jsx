@@ -13,7 +13,7 @@ const LOGO_DIMS = {
 
 const VARIANTS = {
   nav: {
-    className: 'h-10 w-auto max-w-[9.5rem] sm:h-11 sm:max-w-[10.5rem]',
+    className: 'h-11 w-auto max-w-[10.5rem] sm:h-12 sm:max-w-[11.75rem]',
     width: 900,
     height: 667,
   },

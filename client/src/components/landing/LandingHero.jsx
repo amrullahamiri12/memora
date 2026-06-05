@@ -1,120 +1,119 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../ui/Button';
 import ContinueAsGuestButton from '../ContinueAsGuestButton';
-import {
-  LANDING_HERO,
-  LANDING_HERO_STAT,
-  LANDING_HERO_TRUST,
-} from '../../config/landingContent';
+import { LANDING_HERO_INTERVAL_MS, LANDING_HERO_SLIDES } from '../../config/landingContent';
 
 export default function LandingHero() {
-  return (
-    <section className="landing-hero relative">
-      <div
-        className="landing-hero-orb pointer-events-none absolute -left-24 top-8 h-64 w-64 rounded-full opacity-70 blur-3xl lg:h-80 lg:w-80"
-        aria-hidden
-      />
+  const [activeIndex, setActiveIndex] = useState(0);
+  const slideCount = LANDING_HERO_SLIDES.length;
+  const activeSlide = LANDING_HERO_SLIDES[activeIndex];
 
-      <div className="landing-hero-grid grid items-center gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-10 xl:gap-14">
-        <div className="landing-hero-copy relative z-[1] max-w-xl lg:max-w-none">
-          <p className="landing-reveal landing-reveal-1 mb-5 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--accent)] shadow-[var(--shadow)]">
-            <span className="landing-badge-dot h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden />
+  useEffect(() => {
+    if (slideCount <= 1) return undefined;
+
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (motionQuery.matches) return undefined;
+
+    const timer = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % slideCount);
+    }, LANDING_HERO_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+  }, [slideCount]);
+
+  return (
+    <section
+      className="landing-hero-banner landing-stagger-1 relative overflow-hidden rounded-2xl border border-[var(--border)] shadow-[var(--shadow-lg)]"
+      aria-label="Memora study app"
+      aria-roledescription="carousel"
+    >
+      <div className="absolute inset-0" aria-hidden>
+        {LANDING_HERO_SLIDES.map((slide, index) => (
+          <img
+            key={slide.image}
+            src={slide.image}
+            alt=""
+            width={1600}
+            height={900}
+            className={`landing-hero-slide absolute inset-0 h-full w-full object-cover ${
+              index === activeIndex ? 'is-active' : ''
+            }`}
+            style={{ objectPosition: slide.objectPosition ?? 'center center' }}
+            fetchPriority={index === 0 ? 'high' : 'low'}
+            loading={index === 0 ? 'eager' : 'lazy'}
+          />
+        ))}
+      </div>
+
+      <div className="landing-hero-overlay pointer-events-none absolute inset-0" aria-hidden />
+
+      <div className="relative flex min-h-[min(42vh,320px)] flex-col justify-center px-4 py-10 sm:min-h-[min(40vh,300px)] sm:px-6 sm:py-11 lg:px-8">
+        <div className="landing-hero-content max-w-xl">
+          <p className="landing-hero-badge mb-4 inline-block rounded-full px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider">
             Flashcards · quizzes · tests
           </p>
-
-          <h1 className="landing-reveal landing-reveal-2 font-display text-[2.625rem] font-bold leading-[1.06] tracking-tight text-[var(--text-heading)] sm:text-5xl lg:text-[3.35rem] xl:text-[3.75rem]">
+          <h1 className="landing-hero-title font-display text-4xl font-bold leading-[1.08] sm:text-5xl lg:text-6xl">
             Study smarter,
             <br />
-            <span className="landing-headline-accent">remember longer.</span>
+            <span className="landing-hero-accent">remember longer.</span>
           </h1>
-
-          <p className="landing-reveal landing-reveal-3 mt-5 max-w-[34ch] text-base leading-relaxed text-[var(--text-muted)] sm:text-lg sm:leading-relaxed">
+          <p className="landing-hero-lead mt-5 max-w-lg text-lg leading-relaxed sm:text-xl">
             Memora turns your subjects into adaptive practice — enroll in topics, run learn and test
             sessions, and track progress over time.
           </p>
 
-          <ul className="landing-reveal landing-reveal-4 mt-6 flex flex-wrap gap-2">
-            {LANDING_HERO_TRUST.map((item) => (
-              <li
-                key={item}
-                className="rounded-full border border-[var(--border)] bg-[var(--surface-solid)] px-3 py-1 text-xs font-medium text-[var(--text-label)]"
-              >
-                {item}
-              </li>
-            ))}
-          </ul>
-
-          <div className="landing-reveal landing-reveal-5 mt-8">
-            <div className="landing-cta-shell flex w-full max-w-md flex-col gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow)] sm:max-w-lg sm:flex-row">
-              <Link to="/register" className="flex-1">
-                <Button className="landing-cta-primary w-full px-6 py-3.5 text-[0.9375rem]">
-                  Get started
-                  <span className="landing-cta-arrow ml-1.5 inline-block" aria-hidden>
-                    →
-                  </span>
-                </Button>
-              </Link>
-              <ContinueAsGuestButton
-                className="flex-1"
-                buttonClassName="landing-cta-secondary w-full px-6 py-3.5 text-[0.9375rem]"
-                showDescription={false}
-              />
-            </div>
-            <p className="mt-3 max-w-md text-xs leading-relaxed text-[var(--text-muted)]">
-              Try the app with no sign-up — choose subjects next. Create an account later to keep
-              progress.
-            </p>
-          </div>
-
-          <p className="landing-reveal landing-reveal-6 mt-5 text-sm text-[var(--text-muted)]">
-            Already have an account?{' '}
-            <Link
-              to="/login"
-              className="font-semibold text-[var(--accent)] transition-colors hover:text-[var(--accent-hover)] hover:underline"
-            >
-              Sign in
+          <div className="mt-8 flex max-w-md flex-col gap-3.5 sm:max-w-none">
+            <Link to="/register" className="w-full sm:w-auto">
+              <Button className="min-w-[10rem] w-full px-8 py-3.5 shadow-lg sm:w-auto">
+                Get started
+              </Button>
             </Link>
-          </p>
-        </div>
-
-        <div className="landing-reveal landing-reveal-7 relative flex justify-center lg:justify-end xl:justify-center">
-          <div className="landing-hero-visual relative w-full max-w-[420px] sm:max-w-[460px] lg:max-w-[480px]">
-            <div
-              className="landing-image-accent pointer-events-none absolute -right-3 top-6 h-[88%] w-[88%] rounded-[1.35rem] border-2 border-[var(--accent)] opacity-40 lg:-right-4"
-              aria-hidden
+            <ContinueAsGuestButton
+              variant="link"
+              className="w-full sm:w-auto"
+              buttonClassName="landing-hero-link text-base sm:text-lg"
+              showDescription={false}
             />
-
-            <div className="landing-image-glow pointer-events-none absolute -inset-4 rounded-[1.75rem] opacity-60 blur-2xl" aria-hidden />
-
-            <div className="landing-image-frame landing-float relative overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-solid)] shadow-[var(--shadow-lg)]">
-              <img
-                src={LANDING_HERO.image}
-                alt={LANDING_HERO.alt}
-                width={1200}
-                height={800}
-                className="aspect-[4/5] w-full object-cover object-[center_30%] sm:aspect-[5/6]"
-                fetchPriority="high"
-              />
-              <div
-                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[rgba(15,26,22,0.35)] via-transparent to-transparent"
-                aria-hidden
-              />
-            </div>
-
-            <div className="landing-hero-stat-wrap absolute -bottom-4 left-4 sm:-left-5">
-              <div className="landing-hero-stat landing-stat-float flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-solid)] px-4 py-3 shadow-[var(--shadow-lg)]">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--tone-olive-bg)] text-lg" aria-hidden>
-                  {LANDING_HERO_STAT.icon}
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-[var(--text-heading)]">{LANDING_HERO_STAT.title}</p>
-                  <p className="text-xs text-[var(--text-muted)]">{LANDING_HERO_STAT.text}</p>
-                </div>
-              </div>
-            </div>
+            <p className="landing-hero-muted text-sm leading-relaxed sm:text-base">
+              Try the app with no sign-up — you&apos;ll choose subjects next. Create an account later to
+              keep progress.
+            </p>
+            <p className="landing-hero-muted text-sm sm:text-base">
+              Already have an account?{' '}
+              <Link to="/login" className="landing-hero-link text-base font-semibold hover:underline">
+                Sign in
+              </Link>
+            </p>
           </div>
         </div>
       </div>
+
+      {slideCount > 1 && (
+        <div
+          className="absolute bottom-4 right-4 flex gap-1.5 sm:bottom-5 sm:right-5"
+          role="tablist"
+          aria-label="Hero image slides"
+        >
+          {LANDING_HERO_SLIDES.map((slide, index) => (
+            <button
+              key={slide.image}
+              type="button"
+              role="tab"
+              aria-label={`Show slide ${index + 1}: ${slide.alt}`}
+              aria-selected={index === activeIndex}
+              className={`landing-hero-dot h-2 w-2 rounded-full transition-all ${
+                index === activeIndex ? 'is-active' : ''
+              }`}
+              onClick={() => setActiveIndex(index)}
+            />
+          ))}
+        </div>
+      )}
+
+      <p className="sr-only" aria-live="polite">
+        {activeSlide.alt}
+      </p>
     </section>
   );
 }

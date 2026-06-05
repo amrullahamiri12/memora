@@ -1,5 +1,6 @@
 import PublicNav from './PublicNav';
 import SiteFooter from './SiteFooter';
+import BackToHomeLink from './BackToHomeLink';
 
 export default function PublicPageLayout({ children }) {
   return (
@@ -12,7 +13,10 @@ export default function PublicPageLayout({ children }) {
         }}
       />
       <PublicNav />
-      <main className="relative z-10 mx-auto max-w-6xl px-4 py-10 page-enter">{children}</main>
+      <main className="relative z-10 mx-auto max-w-6xl px-4 py-10 page-enter">
+        <BackToHomeLink className="mb-6 inline-block" />
+        {children}
+      </main>
       <SiteFooter />
     </div>
   );

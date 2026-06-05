@@ -23,7 +23,8 @@ export default defineConfig(({ mode }) => {
   },
   server: {
     proxy: {
-      '/api': {
+      // Use /api/ so /api-docs.html stays on Vite (served from public/)
+      '/api/': {
         target: 'http://localhost:5001',
         changeOrigin: true,
       },

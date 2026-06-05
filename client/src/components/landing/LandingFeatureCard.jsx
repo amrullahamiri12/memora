@@ -1,19 +1,21 @@
 export default function LandingFeatureCard({ title, text, image, alt, staggerClass = '' }) {
   return (
     <article
-      className={`glass-card glass-card-hover overflow-hidden rounded-2xl ${staggerClass}`}
+      className={`glass-card glass-card-hover flex h-full flex-col overflow-hidden rounded-2xl ${staggerClass}`}
     >
-      <img
-        src={image}
-        alt={alt}
-        width={800}
-        height={500}
-        loading="lazy"
-        className="aspect-[16/10] w-full object-cover"
-      />
-      <div className="p-5">
-        <h2 className="font-semibold text-[var(--text-heading)]">{title}</h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-muted)]">{text}</p>
+      <div className="overflow-hidden">
+        <img
+          src={image}
+          alt={alt}
+          width={800}
+          height={500}
+          loading="lazy"
+          className="aspect-[3/2] w-full object-cover"
+        />
+      </div>
+      <div className="flex flex-1 flex-col p-5 lg:p-6">
+        <h2 className="text-base font-semibold text-[var(--text-heading)]">{title}</h2>
+        <p className="mt-2 flex-1 text-sm leading-relaxed text-[var(--text-muted)]">{text}</p>
       </div>
     </article>
   );

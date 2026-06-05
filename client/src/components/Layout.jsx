@@ -77,11 +77,11 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen">
       <nav
-        className="app-nav sticky top-0 z-50 border-b backdrop-blur-xl"
+        className="app-nav border-b backdrop-blur-xl"
         style={{ background: 'var(--nav-bg)' }}
       >
-        <div className="mx-auto max-w-6xl px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="app-nav-inner mx-auto max-w-6xl px-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
             <div className="nav-brand">
               <Logo to={logoTo} variant="nav" />
             </div>
@@ -148,7 +148,7 @@ export default function Layout({ children }) {
                   {navLink('/account', 'Account')}
                 </>
               )}
-              <span className="hidden rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-medium text-[var(--text-muted)] sm:inline">
+              <span className="hidden rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm font-medium text-[var(--text-muted)] sm:inline">
                 {user?.name}
                 {inStudentPreview && (
                   <span className="ml-1.5 text-[var(--accent)]">· Learner view</span>
@@ -158,7 +158,7 @@ export default function Layout({ children }) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="btn-secondary g_id_signout py-2 text-sm"
+                className="btn-secondary g_id_signout px-4 py-2.5 text-[0.9375rem]"
               >
                 Logout
               </button>

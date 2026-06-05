@@ -53,7 +53,7 @@ export default function AdminNavDropdown({ label, sectionId }) {
       >
         {label}
         <svg
-          className={`h-3.5 w-3.5 opacity-70 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 opacity-70 transition-transform ${open ? 'rotate-180' : ''}`}
           viewBox="0 0 20 20"
           fill="currentColor"
           aria-hidden
@@ -83,7 +83,7 @@ export default function AdminNavDropdown({ label, sectionId }) {
                 key={item.to}
                 to={item.to}
                 role="menuitem"
-                className={`admin-nav-dropdown-item block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                className={`admin-nav-dropdown-item block rounded-lg px-3 py-2 text-[0.9375rem] font-medium transition-colors ${
                   itemActive
                     ? 'bg-[var(--accent-glow)] text-[var(--accent)]'
                     : 'text-[var(--text)] hover:bg-[var(--surface-hover)] hover:text-[var(--accent)]'

@@ -4,7 +4,7 @@ import LandingHero from '../components/landing/LandingHero';
 import LandingFeatureCard from '../components/landing/LandingFeatureCard';
 import { LANDING_FEATURES } from '../config/landingContent';
 
-const FEATURE_STAGGER = ['landing-stagger-3', 'landing-stagger-4', 'landing-stagger-5'];
+const FEATURE_STAGGER = ['landing-stagger-2', 'landing-stagger-3', 'landing-stagger-4'];
 
 export default function Landing() {
   return (
@@ -19,20 +19,31 @@ export default function Landing() {
 
       <PublicNav />
 
-      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-20 pt-12 page-enter sm:pt-14 lg:pt-16">
+      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-20 pt-10 page-enter">
         <LandingHero />
 
-        <section className="mt-20 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {LANDING_FEATURES.map((item, index) => (
-            <LandingFeatureCard
-              key={item.title}
-              title={item.title}
-              text={item.text}
-              image={item.image}
-              alt={item.alt}
-              staggerClass={FEATURE_STAGGER[index] ?? 'landing-stagger-5'}
-            />
-          ))}
+        <section className="mt-16 lg:mt-20">
+          <div className="mb-8 text-center lg:mb-10">
+            <h2 className="font-display text-2xl font-bold text-[var(--text-heading)] sm:text-3xl">
+              Everything you need to study
+            </h2>
+            <p className="mx-auto mt-2 max-w-lg text-sm text-[var(--text-muted)] sm:text-base">
+              Learn, review flashcards, and track your progress — all in one place.
+            </p>
+          </div>
+
+          <div className="grid items-stretch gap-6 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3 lg:gap-8">
+            {LANDING_FEATURES.map((item, index) => (
+              <LandingFeatureCard
+                key={item.title}
+                title={item.title}
+                text={item.text}
+                image={item.image}
+                alt={item.alt}
+                staggerClass={FEATURE_STAGGER[index] ?? 'landing-stagger-4'}
+              />
+            ))}
+          </div>
         </section>
       </main>
 

@@ -8,6 +8,7 @@ export default function ContinueAsGuestButton({
   className = 'w-full',
   buttonClassName = '',
   showDescription = true,
+  variant = 'button',
 }) {
   const { continueAsGuest } = useAuth();
   const navigate = useNavigate();
@@ -27,6 +28,13 @@ export default function ContinueAsGuestButton({
     }
   };
 
+  const description = (
+    <p className="mt-2 text-center text-sm leading-relaxed text-[var(--text-muted)] sm:text-left sm:text-base">
+      Try the app with no sign-up — you&apos;ll choose subjects next. Create an account later to keep
+      progress.
+    </p>
+  );
+
   return (
     <div className={className}>
       {error && (
@@ -34,21 +42,27 @@ export default function ContinueAsGuestButton({
           <Alert>{error}</Alert>
         </div>
       )}
-      <Button
-        type="button"
-        variant="secondary"
-        className={`w-full py-3 ${buttonClassName}`.trim()}
-        loading={loading}
-        onClick={handleClick}
-      >
-        Continue as guest
-      </Button>
-      {showDescription && (
-        <p className="mt-2 text-center text-xs text-[var(--text-muted)] sm:text-left">
-          Try the app with no sign-up — you&apos;ll choose subjects next. Create an account later to keep
-          progress.
-        </p>
+      {variant === 'link' ? (
+        <button
+          type="button"
+          disabled={loading}
+          onClick={handleClick}
+          className={`text-base font-semibold text-[var(--accent)] transition-colors hover:text-[var(--accent-hover)] hover:underline disabled:cursor-not-allowed disabled:opacity-50 ${buttonClassName}`.trim()}
+        >
+          {loading ? 'Loading...' : 'Continue as guest'}
+        </button>
+      ) : (
+        <Button
+          type="button"
+          variant="secondary"
+          className={`w-full py-3 ${buttonClassName}`.trim()}
+          loading={loading}
+          onClick={handleClick}
+        >
+          Continue as guest
+        </Button>
       )}
+      {showDescription && description}
     </div>
   );
 }

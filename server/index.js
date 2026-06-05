@@ -23,4 +23,9 @@ app.use((_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  if (!process.env.RESEND_API_KEY?.trim() || !process.env.CONTACT_EMAIL?.trim()) {
+    console.warn(
+      '[contact] Contact form disabled — set RESEND_API_KEY and CONTACT_EMAIL in server/.env'
+    );
+  }
 });

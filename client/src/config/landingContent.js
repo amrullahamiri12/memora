@@ -1,21 +1,50 @@
-export const LANDING_HERO = {
-  image: '/landing/hero.webp',
-  alt: 'Student studying with notebook and laptop at a desk',
-  photographer: 'Green Chameleon',
-  unsplashUrl: 'https://unsplash.com/photos/OP88TNuz5Ho',
-};
-
-export const LANDING_HERO_TRUST = [
-  'Free to start',
-  'No credit card',
-  'Guest mode available',
+/** Hero carousel — same slides in light and dark mode */
+export const LANDING_HERO_SLIDES = [
+  {
+    image: '/landing/hero.webp',
+    alt: 'Student studying with notebook and pen at a desk',
+    objectPosition: 'center 40%',
+    photographer: 'Green Chameleon',
+    unsplashUrl: 'https://unsplash.com/photos/OP88TNuz5Ho',
+  },
+  {
+    image: '/landing/hero-light.webp',
+    alt: 'Open books and study materials in bright natural light',
+    objectPosition: 'center 35%',
+    photographer: 'Aaron Burden',
+    unsplashUrl: 'https://unsplash.com/photos/55aiqBrRVNo',
+  },
+  {
+    image: '/landing/hero-slide-3.webp',
+    alt: 'Person taking notes while learning on a laptop',
+    objectPosition: 'center center',
+    photographer: 'Christina @ wocintechchat.com',
+    unsplashUrl: 'https://unsplash.com/photos/bFZPJIFWMKE',
+  },
+  {
+    image: '/landing/hero-slide-4.jpg',
+    alt: 'Students collaborating while studying with laptops',
+    objectPosition: 'center center',
+    photographer: 'Element5 Digital',
+    unsplashUrl: 'https://unsplash.com/photos/2sAQ3v6XBS4',
+  },
+  {
+    image: '/landing/hero-slide-5.webp',
+    alt: 'Desk with laptop and study materials for focused review',
+    objectPosition: 'center center',
+    photographer: 'Scott Graham',
+    unsplashUrl: 'https://unsplash.com/photos/Q1p7bh3SHj8',
+  },
+  {
+    image: '/landing/hero-slide-6.webp',
+    alt: 'Planner and calendar for tracking daily study habits',
+    objectPosition: 'center center',
+    photographer: 'Glenn Carstens-Peters',
+    unsplashUrl: 'https://unsplash.com/photos/npxXWgQ33ZQ',
+  },
 ];
 
-export const LANDING_HERO_STAT = {
-  icon: '🔥',
-  title: 'Build a streak',
-  text: 'Daily practice that sticks',
-};
+export const LANDING_HERO_INTERVAL_MS = 10_000;
 
 export const LANDING_FEATURES = [
   {
