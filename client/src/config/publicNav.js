@@ -1,5 +1,5 @@
 /** Legal entity operating Memora (memora.cards). */
-export const COMPANY_LEGAL_NAME = 'Willowteam LLC';
+export const COMPANY_LEGAL_NAME = 'Willow Team LLC';
 
 /** Header links (subset — legal pages are footer-first). */
 export const PUBLIC_HEADER_LINKS = [

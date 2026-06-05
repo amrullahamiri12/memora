@@ -65,7 +65,6 @@ export default function SiteFooter() {
             <p className="font-display text-lg font-bold text-[var(--text-heading)]">Memora</p>
             <p className="mt-2 max-w-xs text-sm leading-relaxed text-[var(--text-muted)]">
               Adaptive flashcards, quizzes, and progress tracking for every subject you study.
-              Operated by {COMPANY_LEGAL_NAME}.
             </p>
           </div>
 
@@ -86,17 +85,10 @@ export default function SiteFooter() {
         </div>
 
         <div className="mt-10 flex flex-col gap-3 border-t border-[var(--border)] pt-6 text-sm text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p>
-              © {year} {COMPANY_LEGAL_NAME}. All rights reserved.
-            </p>
-            <p className="mt-1 text-xs">
-              Memora ·{' '}
-              <a href="https://memora.cards/" className="hover:text-[var(--accent)]">
-                memora.cards
-              </a>
-            </p>
-          </div>
+          <p>
+            © {year} Memora is operated by {COMPANY_LEGAL_NAME}. Serving across the U.S. All
+            rights reserved.
+          </p>
           <p className="text-xs">Learn · Flashcards · Test · Streaks</p>
         </div>
       </div>
