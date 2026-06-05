@@ -11,7 +11,7 @@ const {
   assertSubjectAccess,
   ensureUserEnrollments,
 } = require('../lib/userSubjects');
-const { getEnrollmentQuota } = require('../lib/enrollmentLimits');
+const { deriveQuotaFromSubjects, staffEnrollmentQuota } = require('../lib/enrollmentLimits');
 const { getSubjectsWithProgress, getTopicsWithProgress } = require('../lib/subjectProgress');
 const { parsePagination, paginatedResponse } = require('../lib/pagination');
 
@@ -123,7 +123,9 @@ router.post(
 
       const subjectIds = await getEnrolledSubjectIds(req.user.id);
       const subjects = await getSubjectsWithProgress(req.user.id, subjectIds);
-      const enrollmentQuota = await getEnrollmentQuota(req.user.id);
+      const enrollmentQuota = skipLimitCheck
+        ? staffEnrollmentQuota()
+        : deriveQuotaFromSubjects(subjects);
       res.json({
         message: `Added ${enrolled.length} subject(s)`,
         subjects,

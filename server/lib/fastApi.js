@@ -379,7 +379,11 @@ async function subjectsEnroll(user, body, learnerView = false) {
     return { status: 400, body: { error: 'Select at least one subject' } };
   }
 
-  const { assertCanEnrollSubjects, getEnrollmentQuota } = require('./enrollmentLimits');
+  const {
+    assertCanEnrollSubjects,
+    deriveQuotaFromSubjects,
+    staffEnrollmentQuota,
+  } = require('./enrollmentLimits');
   if (!isStaff(user.role)) {
     try {
       await assertCanEnrollSubjects(user.id, ids);
@@ -397,7 +401,9 @@ async function subjectsEnroll(user, body, learnerView = false) {
   }
 
   const dash = await dashboardSubjects(user, learnerView);
-  const enrollmentQuota = await getEnrollmentQuota(user.id);
+  const enrollmentQuota = isStaff(user.role)
+    ? staffEnrollmentQuota()
+    : deriveQuotaFromSubjects(dash.body);
   return {
     status: 200,
     body: {

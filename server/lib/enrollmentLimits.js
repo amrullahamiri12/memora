@@ -22,6 +22,16 @@ function buildQuota(activeSlots) {
   };
 }
 
+/** Staff admins are not subject to enrollment caps. */
+function staffEnrollmentQuota() {
+  return {
+    limit: MAX_ACTIVE_SUBJECTS,
+    activeSlots: 0,
+    spotsRemaining: MAX_ACTIVE_SUBJECTS,
+    canEnrollMore: true,
+  };
+}
+
 function deriveQuotaFromSubjects(subjectsWithProgress) {
   return buildQuota(countActiveSlots(subjectsWithProgress));
 }
@@ -76,6 +86,8 @@ module.exports = {
   MAX_ACTIVE_SUBJECTS,
   isSubjectMastered,
   countActiveSlots,
+  buildQuota,
+  staffEnrollmentQuota,
   deriveQuotaFromSubjects,
   getEnrollmentQuota,
   assertCanEnrollSubjects,
