@@ -5,8 +5,6 @@ import Alert from './ui/Alert';
 import SubjectPicker from './SubjectPicker';
 import { api } from '../utils/api';
 
-const SUBJECT_LIMIT = 3;
-
 async function fetchAvailableSubjects() {
   try {
     return await api('/subjects/available');
@@ -21,14 +19,6 @@ async function fetchAvailableSubjects() {
   }
 }
 
-async function fetchEnrollmentStatus() {
-  try {
-    return await api('/subjects/enrollment-status');
-  } catch {
-    return null;
-  }
-}
-
 export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }) {
   const [available, setAvailable] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -36,16 +26,12 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const [enrollmentStatus, setEnrollmentStatus] = useState(null);
 
   const load = () => {
     setLoading(true);
     setError('');
-    Promise.all([fetchAvailableSubjects(), fetchEnrollmentStatus()])
-      .then(([subjects, status]) => {
-        setAvailable(subjects);
-        setEnrollmentStatus(status);
-      })
+    fetchAvailableSubjects()
+      .then(setAvailable)
       .catch((err) => {
         setError(err.message);
         setAvailable([]);
@@ -61,11 +47,6 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
     if (defaultExpanded) setExpanded(true);
   }, [defaultExpanded]);
 
-  const activeCount = enrollmentStatus?.activeCount ?? 0;
-  const hasUnmastered = enrollmentStatus?.hasUnmastered ?? false;
-  const canAddMore = enrollmentStatus ? enrollmentStatus.canAddMore : true;
-  const spotsLeft = Math.max(0, SUBJECT_LIMIT - activeCount);
-
   const handleEnroll = async () => {
     if (selectedIds.length === 0) {
       setError('Select at least one subject');
@@ -80,7 +61,6 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
       });
       setSelectedIds([]);
       setExpanded(false);
-      if (data.enrollmentStatus) setEnrollmentStatus(data.enrollmentStatus);
       onEnrolled(data.subjects);
       load();
     } catch (err) {
@@ -97,19 +77,6 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
       <Card className="mb-8 p-5">
         <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
         <p className="mt-2 text-sm text-[var(--text-muted)]">Loading subjects…</p>
-      </Card>
-    );
-  }
-
-  // At limit with unmastered subjects — show the blocked state
-  if (!defaultExpanded && !canAddMore && activeCount >= SUBJECT_LIMIT) {
-    return (
-      <Card className="mb-8 p-5">
-        <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
-        <p className="mt-2 text-sm text-[var(--text-muted)]">
-          You have reached the {SUBJECT_LIMIT}-subject limit. Master your current subjects (100%
-          progress) before enrolling in new ones.
-        </p>
       </Card>
     );
   }
@@ -131,9 +98,7 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
       <Card className="mb-8 p-5">
         <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
-          {activeCount >= SUBJECT_LIMIT
-            ? 'Master your current subjects to unlock more.'
-            : 'No subjects are set up yet. Ask an admin to add subjects and flashcards.'}
+          No subjects are set up yet. Ask an admin to add subjects and flashcards.
         </p>
       </Card>
     );
@@ -146,10 +111,8 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
           <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
           <p className="text-sm text-[var(--text-muted)]">
             {defaultExpanded
-              ? `Select up to ${SUBJECT_LIMIT} subjects to get started`
-              : spotsLeft > 0
-                ? `${available.length} available · ${spotsLeft} slot${spotsLeft !== 1 ? 's' : ''} remaining`
-                : `Expand what you study — ${available.length} available`}
+              ? 'Select one or more subjects to get started'
+              : `Expand what you study — ${available.length} available`}
           </p>
         </div>
         {!defaultExpanded && (
@@ -166,19 +129,12 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
 
       {(expanded || defaultExpanded) && (
         <div className="mt-5">
-          {hasUnmastered && activeCount > 0 && spotsLeft > 0 && (
-            <Alert type="info" className="mb-4">
-              You have {spotsLeft} slot{spotsLeft !== 1 ? 's' : ''} left. Once you reach {SUBJECT_LIMIT}{' '}
-              subjects, you must master all of them before adding more.
-            </Alert>
-          )}
           {error && <Alert>{error}</Alert>}
           <SubjectPicker
             subjects={available}
             selectedIds={selectedIds}
             onChange={setSelectedIds}
             disabled={saving}
-            maxSelectable={spotsLeft > 0 ? spotsLeft : SUBJECT_LIMIT}
           />
           <Button
             type="button"

@@ -6,7 +6,6 @@ export default function SubjectPicker({
   selectedIds,
   onChange,
   disabled = false,
-  maxSelectable = null,
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -49,11 +48,8 @@ export default function SubjectPicker({
     return <p className="text-sm text-[var(--text-muted)]">No subjects available yet.</p>;
   }
 
-  const atMax = maxSelectable !== null && selectedIds.length >= maxSelectable;
-
   const addSubject = (id) => {
     if (disabled || !id || selectedSet.has(id)) return;
-    if (maxSelectable !== null && selectedIds.length >= maxSelectable) return;
     onChange([...selectedIds, id]);
     setQuery('');
     setOpen(false);
@@ -66,8 +62,7 @@ export default function SubjectPicker({
 
   const selectAll = () => {
     if (disabled) return;
-    const all = subjects.map((s) => s.id);
-    onChange(maxSelectable !== null ? all.slice(0, maxSelectable) : all);
+    onChange(subjects.map((s) => s.id));
     setQuery('');
     setOpen(false);
   };
@@ -110,12 +105,8 @@ export default function SubjectPicker({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-[var(--text-muted)]">
           {selectedSubjects.length === 0
-            ? maxSelectable !== null
-              ? `Choose up to ${maxSelectable} subject${maxSelectable !== 1 ? 's' : ''}`
-              : 'Choose at least one subject'
-            : maxSelectable !== null
-              ? `${selectedSubjects.length} / ${maxSelectable} selected`
-              : `${selectedSubjects.length} selected`}
+            ? 'Choose at least one subject'
+            : `${selectedSubjects.length} selected`}
         </p>
         {subjects.length > 1 && (
           <div className="flex gap-3 text-xs font-medium">
@@ -153,9 +144,9 @@ export default function SubjectPicker({
               aria-controls={listId}
               aria-autocomplete="list"
               autoComplete="off"
-              disabled={disabled || atMax}
+              disabled={disabled}
               value={query}
-              placeholder={atMax ? 'Selection limit reached' : 'Search or pick a subject…'}
+              placeholder="Search or pick a subject…"
               className="input-field w-full pr-9 text-sm"
               onChange={(e) => {
                 setQuery(e.target.value);

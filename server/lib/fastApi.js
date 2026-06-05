@@ -379,41 +379,17 @@ async function subjectsEnroll(user, body, learnerView = false) {
     return { status: 400, body: { error: 'Select at least one subject' } };
   }
 
-  // Check which IDs are genuinely new
-  const { MAX_ACTIVE_SUBJECTS, assertEnrollmentAllowed } = require('./userSubjects');
-  const alreadyRes = await db.query(
-    'SELECT subject_id FROM user_subjects WHERE user_id = $1 AND subject_id = ANY($2::text[])',
-    [user.id, ids]
-  );
-  const alreadySet = new Set(alreadyRes.rows.map((r) => r.subject_id));
-  const newIds = ids.filter((id) => !alreadySet.has(id));
-
-  if (newIds.length > 0) {
-    const limitError = await assertEnrollmentAllowed(user.id, newIds.length);
-    if (limitError) {
-      return { status: limitError.status, body: { error: limitError.error, code: limitError.code } };
-    }
-  }
-
   const added = await enrollUserInSubjectsFast(user.id, ids);
   if (added === 0) {
     return { status: 400, body: { error: 'No valid subjects selected' } };
   }
 
   const dash = await dashboardSubjects(user, learnerView);
-  const { getEnrollmentStatus } = require('./userSubjects');
-  const enrollmentStatus = await getEnrollmentStatus(user.id);
   return {
     status: 200,
     body: {
       message: `Added ${added} subject(s)`,
       subjects: dash.body,
-      enrollmentStatus: {
-        activeCount: enrollmentStatus.activeCount,
-        hasUnmastered: enrollmentStatus.hasUnmastered,
-        limit: MAX_ACTIVE_SUBJECTS,
-        canAddMore: !enrollmentStatus.hasUnmastered || enrollmentStatus.activeCount < MAX_ACTIVE_SUBJECTS,
-      },
     },
   };
 }

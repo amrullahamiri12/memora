@@ -86,17 +86,6 @@ async function register({ name, email, password, subjectIds }) {
     return { status: 400, body: { error: 'Select at least one subject to practice' } };
   }
 
-  const { MAX_ACTIVE_SUBJECTS } = require('./userSubjects');
-  if (ids.length > MAX_ACTIVE_SUBJECTS) {
-    return {
-      status: 422,
-      body: {
-        error: `You can enroll in a maximum of ${MAX_ACTIVE_SUBJECTS} subjects at a time.`,
-        code: 'SUBJECT_LIMIT_REACHED',
-      },
-    };
-  }
-
   const existing = await findUserByEmail(trimmedEmail);
   if (existing) {
     if (existing.deactivatedAt) {

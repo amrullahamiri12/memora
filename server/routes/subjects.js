@@ -8,10 +8,8 @@ const { shouldRestrictToEnrolledSubjects } = require('../lib/learnerView');
 const {
   enrollUserInSubjects,
   getEnrolledSubjectIds,
-  getEnrollmentStatus,
   assertSubjectAccess,
   ensureUserEnrollments,
-  MAX_ACTIVE_SUBJECTS,
 } = require('../lib/userSubjects');
 const { getSubjectsWithProgress, getTopicsWithProgress } = require('../lib/subjectProgress');
 const { parsePagination, paginatedResponse } = require('../lib/pagination');
@@ -39,24 +37,6 @@ router.get('/catalog', async (_req, res) => {
 });
 
 router.use(authMiddleware);
-
-router.get('/enrollment-status', async (req, res) => {
-  try {
-    if (!shouldRestrictToEnrolledSubjects(req.user, req.learnerView)) {
-      return res.json({ activeCount: 0, hasUnmastered: false, limit: MAX_ACTIVE_SUBJECTS, canAddMore: true });
-    }
-    const status = await getEnrollmentStatus(req.user.id);
-    res.json({
-      activeCount: status.activeCount,
-      hasUnmastered: status.hasUnmastered,
-      limit: MAX_ACTIVE_SUBJECTS,
-      canAddMore: !status.hasUnmastered || status.activeCount < MAX_ACTIVE_SUBJECTS,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to get enrollment status' });
-  }
-});
 
 router.get('/available', async (req, res) => {
   try {
@@ -126,31 +106,16 @@ router.post(
       }
 
       const ids = req.body.subjectIds.filter((id) => typeof id === 'string' && id.trim());
-      let enrolled;
-      try {
-        enrolled = await enrollUserInSubjects(req.user.id, ids);
-      } catch (err) {
-        if (err.code === 'SUBJECT_LIMIT_REACHED') {
-          return res.status(err.status || 422).json({ error: err.message, code: err.code });
-        }
-        throw err;
-      }
+      const enrolled = await enrollUserInSubjects(req.user.id, ids);
       if (enrolled.length === 0) {
         return res.status(400).json({ error: 'No valid subjects selected' });
       }
 
       const subjectIds = await getEnrolledSubjectIds(req.user.id);
       const subjects = await getSubjectsWithProgress(req.user.id, subjectIds);
-      const enrollmentStatus = await getEnrollmentStatus(req.user.id);
       res.json({
         message: `Added ${enrolled.length} subject(s)`,
         subjects,
-        enrollmentStatus: {
-          activeCount: enrollmentStatus.activeCount,
-          hasUnmastered: enrollmentStatus.hasUnmastered,
-          limit: MAX_ACTIVE_SUBJECTS,
-          canAddMore: !enrollmentStatus.hasUnmastered || enrollmentStatus.activeCount < MAX_ACTIVE_SUBJECTS,
-        },
       });
     } catch (err) {
       console.error(err);
