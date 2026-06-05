@@ -29,7 +29,7 @@ const ROUTE_META = {
   '/about': {
     title: 'About — Memora',
     description:
-      'Learn about Memora — adaptive flashcards, quizzes, progress tracking, and admin tools for learners and teams.',
+      'Memora, cultivate your mind — adaptive flashcards, quizzes, and progress tracking from Willow Team LLC.',
     index: true,
   },
   '/contact': {

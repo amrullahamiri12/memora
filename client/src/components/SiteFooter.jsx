@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom';
-import { COMPANY_FOOTER_LINKS, COMPANY_LEGAL_NAME } from '../config/publicNav';
+import {
+  COMPANY_FOOTER_LINKS,
+  COMPANY_LEGAL_NAME,
+  MEMORA_SLOGAN,
+} from '../config/publicNav';
 
-const FOOTER_SECTIONS = [
+const FOOTER_NAV = [
   {
-    title: 'Study',
+    ariaLabel: 'Account',
     links: [
       { label: 'Get started', to: '/register' },
       { label: 'Sign in', to: '/login' },
@@ -11,21 +15,14 @@ const FOOTER_SECTIONS = [
     ],
   },
   {
-    title: 'Company',
+    ariaLabel: 'Company',
     links: COMPANY_FOOTER_LINKS,
   },
   {
-    title: 'Developers',
+    ariaLabel: 'Developers',
     links: [
-      { label: 'API documentation', href: '/api-docs.html' },
-      { label: 'OpenAPI spec', href: '/openapi.yaml', download: true },
-    ],
-  },
-  {
-    title: 'Project',
-    links: [
-      { label: 'GitHub', href: 'https://github.com/amrullahamiri12/memora', external: true },
-      { label: 'memora.cards', href: 'https://memora.cards/', external: true },
+      { label: 'API docs', href: '/api-docs.html' },
+      { label: 'OpenAPI', href: '/openapi.yaml', download: true },
     ],
   },
 ];
@@ -60,37 +57,31 @@ export default function SiteFooter() {
   return (
     <footer className="relative z-10 border-t border-[var(--border)]">
       <div className="mx-auto max-w-6xl px-4 py-10">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2 lg:col-span-1">
             <p className="font-display text-lg font-bold text-[var(--text-heading)]">Memora</p>
             <p className="mt-2 max-w-xs text-sm leading-relaxed text-[var(--text-muted)]">
-              Adaptive flashcards, quizzes, and progress tracking for every subject you study.
+              {MEMORA_SLOGAN}
             </p>
           </div>
 
-          {FOOTER_SECTIONS.map((section) => (
-            <div key={section.title}>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-label)]">
-                {section.title}
-              </h2>
-              <ul className="mt-3 space-y-2">
+          {FOOTER_NAV.map((section) => (
+            <nav key={section.ariaLabel} aria-label={section.ariaLabel}>
+              <ul className="space-y-2">
                 {section.links.map((link) => (
                   <li key={link.label}>
                     <FooterLink link={link} />
                   </li>
                 ))}
               </ul>
-            </div>
+            </nav>
           ))}
         </div>
 
-        <div className="mt-10 flex flex-col gap-3 border-t border-[var(--border)] pt-6 text-sm text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            © {year} Memora is operated by {COMPANY_LEGAL_NAME}. Serving across the U.S. All
-            rights reserved.
-          </p>
-          <p className="text-xs">Learn · Flashcards · Test · Streaks</p>
-        </div>
+        <p className="mt-10 border-t border-[var(--border)] pt-6 text-sm text-[var(--text-muted)]">
+          © {year} Memora is operated by {COMPANY_LEGAL_NAME}. Serving across the U.S. All rights
+          reserved.
+        </p>
       </div>
     </footer>
   );
