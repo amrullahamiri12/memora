@@ -584,6 +584,17 @@ main {
   border-color: var(--border);
 }
 
+.public-user-menu-trigger {
+  cursor: pointer;
+  font: inherit;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.public-user-menu-trigger:hover {
+  color: var(--text-heading);
+  border-color: var(--accent);
+}
+
 .admin-subnav {
   border-color: var(--border);
 }

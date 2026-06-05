@@ -1,25 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useStudentPreview } from '../hooks/useStudentPreview';
-import { getAppHomePath } from '../utils/appHome';
-import { isStaff } from '../utils/roles';
 import Logo from './Logo';
+import PublicUserMenu from './PublicUserMenu';
 import ThemeToggle from './ThemeToggle';
 import { PUBLIC_HEADER_LINKS } from '../config/publicNav';
 
 export default function PublicNav() {
   const location = useLocation();
   const { user } = useAuth();
-  const studentPreview = useStudentPreview();
-  const staff = isStaff(user?.role);
-  const inStudentPreview = staff && studentPreview;
 
   const navLinkClass = (to) =>
     `nav-link ${location.pathname === to ? 'nav-link-active' : ''}`;
-
-  const appHomePath = getAppHomePath(user, inStudentPreview);
-  const appHomeLabel =
-    staff && !inStudentPreview ? 'Admin' : 'Dashboard';
 
   return (
     <header
@@ -41,16 +32,7 @@ export default function PublicNav() {
           </a>
           <ThemeToggle />
           {user ? (
-            <Link
-              to={appHomePath}
-              className={`nav-link-accent ${
-                location.pathname === '/dashboard' || location.pathname === '/admin/dashboard'
-                  ? 'nav-link-active'
-                  : ''
-              }`}
-            >
-              {appHomeLabel}
-            </Link>
+            <PublicUserMenu />
           ) : (
             <Link
               to="/login"
