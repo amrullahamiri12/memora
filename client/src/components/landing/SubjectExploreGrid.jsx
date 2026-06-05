@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../utils/api';
+import { isGuestUser } from '../../utils/guest';
 import { subjectAccent } from '../../utils/studyStorage';
 import { startSubjectAsGuest, START_SUBJECT_ERRORS } from '../../utils/startSubjectAsGuest';
 import Alert from '../ui/Alert';
@@ -82,8 +83,9 @@ export default function SubjectExploreGrid({
   onCatalogLoaded,
   promptBeforeStart = false,
 }) {
-  const { user, continueAsGuest } = useAuth();
+  const { user, continueAsGuest, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [catalog, setCatalog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -126,8 +128,9 @@ export default function SubjectExploreGrid({
   }, [catalog, query, limit]);
 
   const handleStart = async (subjectId) => {
-    if (promptBeforeStart && !user) {
-      navigate(`/explore/${subjectId}`);
+    const needsChooser = !user || isGuestUser(user);
+    if (promptBeforeStart && !authLoading && needsChooser) {
+      navigate(`/explore/${subjectId}`, { state: { from: location.pathname } });
       return;
     }
 

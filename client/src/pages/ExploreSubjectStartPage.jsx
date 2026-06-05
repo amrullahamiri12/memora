@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
+import { isGuestUser } from '../utils/guest';
 import { subjectAccent } from '../utils/studyStorage';
 import { startSubjectAsGuest, START_SUBJECT_ERRORS } from '../utils/startSubjectAsGuest';
 import Alert from '../components/ui/Alert';
@@ -20,6 +21,10 @@ export default function ExploreSubjectStartPage() {
   const { subjectId } = useParams();
   const { user, continueAsGuest, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backTo = location.state?.from === '/explore' ? '/explore' : '/home';
+  const backLabel = backTo === '/explore' ? 'Back to explore' : 'Back to subjects';
+  const signedInLearner = user && !isGuestUser(user);
   const [catalog, setCatalog] = useState([]);
   const [subject, setSubject] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -60,7 +65,7 @@ export default function ExploreSubjectStartPage() {
   }, [subjectId]);
 
   useEffect(() => {
-    if (authLoading || loading || !subject || !user) return;
+    if (authLoading || loading || !subject || !signedInLearner) return;
 
     let cancelled = false;
 
@@ -90,7 +95,7 @@ export default function ExploreSubjectStartPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, loading, subject, user, subjectId, continueAsGuest, catalog, navigate]);
+  }, [authLoading, loading, subject, signedInLearner, subjectId, continueAsGuest, catalog, navigate, user]);
 
   const handleContinueAsGuest = async () => {
     setGuestLoading(true);
@@ -123,7 +128,7 @@ export default function ExploreSubjectStartPage() {
 
   const accent = subject ? subjectAccent(subject.name) : null;
 
-  if (loading || authLoading || autoStarting) {
+  if (loading || authLoading || autoStarting || (signedInLearner && !error)) {
     return (
       <PublicPageLayout>
         <div className="mx-auto flex max-w-md flex-col items-center py-16">
@@ -165,7 +170,7 @@ export default function ExploreSubjectStartPage() {
     );
   }
 
-  if (user) {
+  if (signedInLearner && error) {
     return (
       <PublicPageLayout>
         <div className="mx-auto max-w-md py-10">
@@ -192,10 +197,10 @@ export default function ExploreSubjectStartPage() {
     <PublicPageLayout>
       <div className="mx-auto max-w-lg py-6">
         <Link
-          to="/explore"
+          to={backTo}
           className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-[var(--text-muted)] transition-colors hover:text-[var(--accent)]"
         >
-          ← Back to explore
+          ← {backLabel}
         </Link>
 
         <Card className="overflow-hidden p-0">

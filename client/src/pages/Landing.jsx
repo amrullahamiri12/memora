@@ -39,11 +39,11 @@ export default function Landing() {
                   id="explore-subjects-heading"
                   className="font-display text-2xl font-bold text-[var(--text-heading)] sm:text-3xl"
                 >
-                  Start learning in one click
+                  Pick a subject to get started
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)] sm:text-base">
-                  Choose a subject below and jump straight into practice — no account, no setup
-                  screens. Create one later if you want to keep your progress.
+                  Choose a subject below, then decide whether to create an account, sign in, or
+                  continue as a guest — no pressure until you&apos;re ready.
                 </p>
               </div>
               <Link
@@ -53,7 +53,7 @@ export default function Landing() {
                 View all subjects
               </Link>
             </div>
-            <SubjectExploreGrid limit={6} showSearch={false} skeletonCount={6} />
+            <SubjectExploreGrid limit={6} showSearch={false} skeletonCount={6} promptBeforeStart />
           </div>
         </section>
 
