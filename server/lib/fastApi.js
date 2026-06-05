@@ -317,6 +317,14 @@ async function enrollUserInSubjectsFast(userId, subjectIds) {
   return validIds.length;
 }
 
+async function unenrollUserFromSubjectFast(userId, subjectId) {
+  const { rowCount } = await db.query(
+    'DELETE FROM user_subjects WHERE user_id = $1 AND subject_id = $2',
+    [userId, subjectId]
+  );
+  return rowCount > 0;
+}
+
 async function subjectsAvailable(user, learnerView = false) {
   if (!shouldRestrictToEnrolledSubjects(user, learnerView)) {
     return { status: 200, body: [] };
@@ -366,6 +374,31 @@ async function subjectsAvailable(user, learnerView = false) {
       topicCount: s.topic_count,
       totalCards: cardsBySubject.get(s.id) || 0,
     })),
+  };
+}
+
+async function subjectsUnenroll(user, subjectId, learnerView = false) {
+  if (isStaff(user.role) && !learnerView) {
+    return { status: 400, body: { error: 'Staff accounts have access to all subjects' } };
+  }
+
+  const removed = await unenrollUserFromSubjectFast(user.id, subjectId);
+  if (!removed) {
+    return { status: 404, body: { error: 'You are not enrolled in this subject' } };
+  }
+
+  const dash = await dashboardSubjects(user, learnerView);
+  const { deriveQuotaFromSubjects, staffEnrollmentQuota } = require('./enrollmentLimits');
+  const enrollmentQuota = isStaff(user.role)
+    ? staffEnrollmentQuota()
+    : deriveQuotaFromSubjects(dash.body);
+  return {
+    status: 200,
+    body: {
+      message: 'Subject removed from your list',
+      subjects: dash.body,
+      enrollmentQuota,
+    },
   };
 }
 
@@ -846,6 +879,15 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
     }
   }
 
+  if (method === 'DELETE') {
+    const unenrollSubjectId = parseSubjectUnenrollPath(path);
+    if (unenrollSubjectId) {
+      const auth = await requireUser(authHeader, { requireVerified: true });
+      if (auth.error) return auth.error;
+      return subjectsUnenroll(auth.user, unenrollSubjectId, learnerView);
+    }
+  }
+
   if (method === 'PUT' || method === 'DELETE') {
     const targetId = parseAdminUserId(path);
     if (targetId) {
@@ -983,6 +1025,11 @@ function subjectsAvailablePath(path) {
 function subjectsEnrollPath(path) {
   const normalized = path.replace(/\/$/, '');
   return normalized === '/subjects/enroll' || normalized === '/api/subjects/enroll';
+}
+
+function parseSubjectUnenrollPath(path) {
+  const m = path.match(/(?:\/api)?\/subjects\/([^/]+)\/enroll\/?$/);
+  return m ? m[1] : null;
 }
 
 function contactPath(path) {

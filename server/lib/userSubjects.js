@@ -30,6 +30,14 @@ async function enrollUserInSubjects(userId, subjectIds, { skipLimitCheck = false
   return validIds;
 }
 
+/** Removes enrollment only; user progress is kept for re-enrollment. */
+async function unenrollUserFromSubject(userId, subjectId) {
+  const result = await prisma.userSubject.deleteMany({
+    where: { userId, subjectId },
+  });
+  return result.count > 0;
+}
+
 async function userHasSubject(userId, subjectId) {
   const row = await prisma.userSubject.findUnique({
     where: { userId_subjectId: { userId, subjectId } },
@@ -91,6 +99,7 @@ async function assertFlashcardAccess(user, flashcardId, options = {}) {
 
 module.exports = {
   enrollUserInSubjects,
+  unenrollUserFromSubject,
   userHasSubject,
   getEnrolledSubjectIds,
   assertSubjectAccess,

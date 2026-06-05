@@ -7,6 +7,7 @@ const { isStaff } = require('../lib/roles');
 const { shouldRestrictToEnrolledSubjects } = require('../lib/learnerView');
 const {
   enrollUserInSubjects,
+  unenrollUserFromSubject,
   getEnrolledSubjectIds,
   assertSubjectAccess,
   ensureUserEnrollments,
@@ -137,6 +138,34 @@ router.post(
     }
   }
 );
+
+router.delete('/:id/enroll', async (req, res) => {
+  try {
+    if (isStaff(req.user.role) && !req.learnerView) {
+      return res.status(400).json({ error: 'Staff accounts have access to all subjects' });
+    }
+
+    const removed = await unenrollUserFromSubject(req.user.id, req.params.id);
+    if (!removed) {
+      return res.status(404).json({ error: 'You are not enrolled in this subject' });
+    }
+
+    const subjectIds = await getEnrolledSubjectIds(req.user.id);
+    const subjects = await getSubjectsWithProgress(req.user.id, subjectIds);
+    const skipLimitCheck = isStaff(req.user.role);
+    const enrollmentQuota = skipLimitCheck
+      ? staffEnrollmentQuota()
+      : deriveQuotaFromSubjects(subjects);
+    res.json({
+      message: 'Subject removed from your list',
+      subjects,
+      enrollmentQuota,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to remove subject' });
+  }
+});
 
 router.get('/', async (req, res) => {
   try {

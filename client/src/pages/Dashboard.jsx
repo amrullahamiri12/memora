@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useStudentPreview } from '../hooks/useStudentPreview';
 import PageHeader from '../components/ui/PageHeader';
 import ProgressBar from '../components/ProgressBar';
 import Alert from '../components/ui/Alert';
@@ -12,6 +13,7 @@ import { SubjectCardSkeleton } from '../components/ui/Skeleton';
 import { api } from '../utils/api';
 import { getLastTopic, subjectAccent } from '../utils/studyStorage';
 import { isGuestUser } from '../utils/guest';
+import { isStaff } from '../utils/roles';
 import GuestBanner from '../components/GuestBanner';
 
 export default function Dashboard() {
@@ -21,7 +23,10 @@ export default function Dashboard() {
   const [streak, setStreak] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [leavingId, setLeavingId] = useState(null);
+  const studentPreview = useStudentPreview();
   const lastTopic = getLastTopic();
+  const canLeaveSubjects = Boolean(user && (!isStaff(user.role) || studentPreview));
 
   const loadDashboard = () => {
     setLoading(true);
@@ -49,6 +54,24 @@ export default function Dashboard() {
       navigate('/guest/setup', { replace: true });
     }
   }, [loading, user, subjects.length, navigate]);
+
+  const handleLeaveSubject = async (subject) => {
+    const confirmed = window.confirm(
+      `Leave ${subject.name}? Your progress is saved if you rejoin this subject later.`
+    );
+    if (!confirmed) return;
+
+    setLeavingId(subject.id);
+    setError('');
+    try {
+      const data = await api(`/subjects/${subject.id}/enroll`, { method: 'DELETE' });
+      setSubjects(data.subjects ?? []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLeavingId(null);
+    }
+  };
 
   return (
     <Layout>
@@ -116,9 +139,21 @@ export default function Dashboard() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {subjects.map((subject) => {
             const accent = subjectAccent(subject.name);
+            const isLeaving = leavingId === subject.id;
             return (
-              <Link key={subject.id} to={`/subjects/${subject.id}`} className="block">
-                <Card hover className="h-full overflow-hidden p-0">
+              <Card key={subject.id} hover className="relative h-full overflow-hidden p-0">
+                {canLeaveSubjects && (
+                  <button
+                    type="button"
+                    disabled={isLeaving}
+                    onClick={() => handleLeaveSubject(subject)}
+                    className="absolute right-3 top-3 z-10 rounded-lg border border-[var(--border-strong)] bg-[var(--surface-solid)] px-2.5 py-1 text-xs font-medium text-[var(--text-muted)] shadow-sm transition hover:border-[var(--danger)]/40 hover:text-[var(--danger)] disabled:opacity-50"
+                    aria-label={`Leave ${subject.name}`}
+                  >
+                    {isLeaving ? 'Leaving…' : 'Leave'}
+                  </button>
+                )}
+                <Link to={`/subjects/${subject.id}`} className="block">
                   <div className="h-2" style={{ background: accent.gradient }} />
                   <div className="p-6">
                     <div
@@ -127,14 +162,16 @@ export default function Dashboard() {
                     >
                       {subject.name.charAt(0)}
                     </div>
-                    <h2 className="text-lg font-semibold text-[var(--text-heading)]">{subject.name}</h2>
+                    <h2 className="pr-16 text-lg font-semibold text-[var(--text-heading)]">
+                      {subject.name}
+                    </h2>
                     <p className="mt-1 mb-4 text-sm text-[var(--text-muted)]">
                       {subject.topicCount} topics · {subject.totalCards} cards
                     </p>
                     <ProgressBar percent={subject.progressPercent} label="Mastery" />
                   </div>
-                </Card>
-              </Link>
+                </Link>
+              </Card>
             );
           })}
         </div>
