@@ -15,23 +15,29 @@ const {
 const { deriveQuotaFromSubjects, staffEnrollmentQuota } = require('../lib/enrollmentLimits');
 const { getSubjectsWithProgress, getTopicsWithProgress } = require('../lib/subjectProgress');
 const { parsePagination, paginatedResponse } = require('../lib/pagination');
+const { sortCatalogSubjects, toPublicCatalogItem } = require('../lib/subjectCatalog');
 
 const router = express.Router();
 
-/** Public catalog for registration */
+/** Public catalog for registration and explore — sorted by market popularity */
 router.get('/catalog', async (_req, res) => {
   try {
     const subjects = await prisma.subject.findMany({
-      select: { id: true, name: true, _count: { select: { topics: true } } },
-      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        _count: { select: { topics: true, users: true } },
+      },
     });
-    res.json(
+    const sorted = sortCatalogSubjects(
       subjects.map((s) => ({
         id: s.id,
         name: s.name,
         topicCount: s._count.topics,
+        enrollmentCount: s._count.users,
       }))
     );
+    res.json(sorted.map(toPublicCatalogItem));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch subjects' });

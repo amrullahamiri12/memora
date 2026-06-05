@@ -520,13 +520,16 @@ function authConfig() {
 
 async function catalog() {
   const { rows } = await db.query(
-    `SELECT s.id, s.name, COUNT(t.id)::int AS "topicCount"
+    `SELECT s.id, s.name,
+            COUNT(DISTINCT t.id)::int AS "topicCount",
+            COUNT(DISTINCT us.user_id)::int AS "enrollmentCount"
      FROM subjects s
      LEFT JOIN topics t ON t.subject_id = s.id
-     GROUP BY s.id, s.name
-     ORDER BY s.name ASC`
+     LEFT JOIN user_subjects us ON us.subject_id = s.id
+     GROUP BY s.id, s.name`
   );
-  return rows;
+  const { sortCatalogSubjects, toPublicCatalogItem } = require('./subjectCatalog');
+  return sortCatalogSubjects(rows).map(toPublicCatalogItem);
 }
 
 module.exports = {
