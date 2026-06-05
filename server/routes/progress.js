@@ -36,7 +36,9 @@ router.post(
         return res.status(400).json({ error: 'Provide selectedAnswer or status' });
       }
 
-      const access = await assertFlashcardAccess(req.user, flashcardId);
+      const access = await assertFlashcardAccess(req.user, flashcardId, {
+        learnerView: req.learnerView,
+      });
       if (!access.allowed) {
         return res.status(access.status).json({ error: access.error });
       }

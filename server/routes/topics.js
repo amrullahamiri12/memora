@@ -45,7 +45,9 @@ router.get('/:id/flashcards', async (req, res) => {
       return res.status(404).json({ error: 'Topic not found' });
     }
 
-    const allowed = await assertSubjectAccess(req.user, topic.subject.id);
+    const allowed = await assertSubjectAccess(req.user, topic.subject.id, {
+      learnerView: req.learnerView,
+    });
     if (!allowed) {
       return res.status(403).json({ error: 'You are not enrolled in this subject' });
     }

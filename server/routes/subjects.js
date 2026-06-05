@@ -4,6 +4,7 @@ const prisma = require('../lib/prisma');
 const authMiddleware = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const { isStaff } = require('../lib/roles');
+const { shouldRestrictToEnrolledSubjects } = require('../lib/learnerView');
 const {
   enrollUserInSubjects,
   getEnrolledSubjectIds,
@@ -39,7 +40,7 @@ router.use(authMiddleware);
 
 router.get('/available', async (req, res) => {
   try {
-    if (isStaff(req.user.role)) {
+    if (!shouldRestrictToEnrolledSubjects(req.user, req.learnerView)) {
       return res.json([]);
     }
 
@@ -100,7 +101,7 @@ router.post(
   validate,
   async (req, res) => {
     try {
-      if (isStaff(req.user.role)) {
+      if (isStaff(req.user.role) && !req.learnerView) {
         return res.status(400).json({ error: 'Staff accounts have access to all subjects' });
       }
 
@@ -126,7 +127,7 @@ router.post(
 router.get('/', async (req, res) => {
   try {
     let subjectIds = null;
-    if (!isStaff(req.user.role)) {
+    if (shouldRestrictToEnrolledSubjects(req.user, req.learnerView)) {
       await ensureUserEnrollments(req.user.id);
       subjectIds = await getEnrolledSubjectIds(req.user.id);
       if (subjectIds.length === 0) {
@@ -144,7 +145,9 @@ router.get('/', async (req, res) => {
 
 router.get('/:id/topics', async (req, res) => {
   try {
-    const allowed = await assertSubjectAccess(req.user, req.params.id);
+    const allowed = await assertSubjectAccess(req.user, req.params.id, {
+      learnerView: req.learnerView,
+    });
     if (!allowed) {
       return res.status(403).json({ error: 'You are not enrolled in this subject' });
     }

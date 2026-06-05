@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'flashcard_token';
+import { isStudentViewActive } from './studentView';
 
 /** Same-origin `/api` on Vercel; override with VITE_API_URL for split hosting */
 export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
@@ -28,6 +29,10 @@ export async function api(path, options = {}) {
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (isStudentViewActive()) {
+    headers['X-Learner-View'] = '1';
   }
 
   let res;

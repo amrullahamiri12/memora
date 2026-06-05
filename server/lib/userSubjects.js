@@ -1,5 +1,5 @@
 const prisma = require('./prisma');
-const { isStaff } = require('./roles');
+const { shouldRestrictToEnrolledSubjects } = require('./learnerView');
 
 async function enrollUserInSubjects(userId, subjectIds) {
   const unique = [...new Set(subjectIds)];
@@ -40,8 +40,9 @@ async function getEnrolledSubjectIds(userId) {
   return rows.map((r) => r.subjectId);
 }
 
-async function assertSubjectAccess(user, subjectId) {
-  if (isStaff(user.role)) return true;
+async function assertSubjectAccess(user, subjectId, options = {}) {
+  const { learnerView = false } = options;
+  if (!shouldRestrictToEnrolledSubjects(user, learnerView)) return true;
   return userHasSubject(user.id, subjectId);
 }
 
@@ -67,7 +68,8 @@ async function ensureUserEnrollments(userId) {
   }
 }
 
-async function assertFlashcardAccess(user, flashcardId) {
+async function assertFlashcardAccess(user, flashcardId, options = {}) {
+  const { learnerView = false } = options;
   const flashcard = await prisma.flashcard.findUnique({
     where: { id: flashcardId },
     include: { topic: { select: { subjectId: true } } },
@@ -75,7 +77,7 @@ async function assertFlashcardAccess(user, flashcardId) {
   if (!flashcard) {
     return { allowed: false, status: 404, error: 'Flashcard not found' };
   }
-  const allowed = await assertSubjectAccess(user, flashcard.topic.subjectId);
+  const allowed = await assertSubjectAccess(user, flashcard.topic.subjectId, { learnerView });
   if (!allowed) {
     return { allowed: false, status: 403, error: 'You are not enrolled in this subject' };
   }

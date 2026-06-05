@@ -1,6 +1,6 @@
 const { randomUUID } = require('crypto');
 const db = require('./pg');
-const { isStaff } = require('./roles');
+const { shouldRestrictToEnrolledSubjects } = require('./learnerView');
 const { gradeFlashcardAnswer, formatCorrectAnswer } = require('./questionTypes');
 
 function getTodayDate() {
@@ -21,7 +21,7 @@ function mapFlashcardRow(row) {
   };
 }
 
-async function assertFlashcardAccessFast(user, flashcardId) {
+async function assertFlashcardAccessFast(user, flashcardId, learnerView = false) {
   const { rows } = await db.query(
     `SELECT f.id,
             f.question_type AS "questionType",
@@ -42,7 +42,7 @@ async function assertFlashcardAccessFast(user, flashcardId) {
     return { allowed: false, status: 404, error: 'Flashcard not found' };
   }
 
-  if (!isStaff(user.role)) {
+  if (shouldRestrictToEnrolledSubjects(user, learnerView)) {
     const enrolled = await db.query(
       'SELECT 1 FROM user_subjects WHERE user_id = $1 AND subject_id = $2 LIMIT 1',
       [user.id, rows[0].subjectId]
@@ -55,7 +55,7 @@ async function assertFlashcardAccessFast(user, flashcardId) {
   return { allowed: true, flashcard: mapFlashcardRow(rows[0]) };
 }
 
-async function saveProgressFast(user, body) {
+async function saveProgressFast(user, body, learnerView = false) {
   const flashcardId = typeof body?.flashcardId === 'string' ? body.flashcardId.trim() : '';
   let status = body?.status;
   const selectedAnswer = body?.selectedAnswer;
@@ -72,7 +72,7 @@ async function saveProgressFast(user, body) {
     return { status: 400, body: { error: 'Status must be GOT_IT or NEEDS_PRACTICE' } };
   }
 
-  const access = await assertFlashcardAccessFast(user, flashcardId);
+  const access = await assertFlashcardAccessFast(user, flashcardId, learnerView);
   if (!access.allowed) {
     return { status: access.status, body: { error: access.error } };
   }

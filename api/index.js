@@ -226,7 +226,8 @@ module.exports = async (req, res) => {
       p,
       query,
       authHeader,
-      body
+      body,
+      req.headers
     );
     if (fast) {
       if (fast.csv) {

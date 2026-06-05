@@ -18,6 +18,7 @@ const {
 } = require('./authUser');
 const { deactivateUser, reactivateUser } = require('./userLifecycle');
 const { parseUserGroupFilter } = require('./adminUserFilters');
+const { isLearnerViewRequest, shouldRestrictToEnrolledSubjects } = require('./learnerView');
 
 const VALID_ROLES = ['USER', 'ADMIN', 'SUPER_ADMIN'];
 
@@ -316,8 +317,8 @@ async function enrollUserInSubjectsFast(userId, subjectIds) {
   return validIds.length;
 }
 
-async function subjectsAvailable(user) {
-  if (isStaff(user.role)) {
+async function subjectsAvailable(user, learnerView = false) {
+  if (!shouldRestrictToEnrolledSubjects(user, learnerView)) {
     return { status: 200, body: [] };
   }
 
@@ -368,8 +369,8 @@ async function subjectsAvailable(user) {
   };
 }
 
-async function subjectsEnroll(user, body) {
-  if (isStaff(user.role)) {
+async function subjectsEnroll(user, body, learnerView = false) {
+  if (isStaff(user.role) && !learnerView) {
     return { status: 400, body: { error: 'Staff accounts have access to all subjects' } };
   }
 
@@ -383,7 +384,7 @@ async function subjectsEnroll(user, body) {
     return { status: 400, body: { error: 'No valid subjects selected' } };
   }
 
-  const dash = await dashboardSubjects(user);
+  const dash = await dashboardSubjects(user, learnerView);
   return {
     status: 200,
     body: {
@@ -414,7 +415,7 @@ async function verifyAdminUserEmail(actor, targetId) {
   return { status: 200, body: { message: 'Email marked as verified', user: publicUser(rows[0]) } };
 }
 
-async function subjectTopics(user, subjectId, query) {
+async function subjectTopics(user, subjectId, query, learnerView = false) {
   const subjectRes = await db.query(
     'SELECT id, name FROM subjects WHERE id = $1 LIMIT 1',
     [subjectId]
@@ -423,7 +424,7 @@ async function subjectTopics(user, subjectId, query) {
     return { status: 404, body: { error: 'Subject not found' } };
   }
 
-  if (!isStaff(user.role)) {
+  if (shouldRestrictToEnrolledSubjects(user, learnerView)) {
     const enrolled = await db.query(
       'SELECT 1 FROM user_subjects WHERE user_id = $1 AND subject_id = $2 LIMIT 1',
       [user.id, subjectId]
@@ -518,7 +519,7 @@ async function subjectTopics(user, subjectId, query) {
   return { status: 200, body };
 }
 
-async function topicFlashcards(user, topicId, query) {
+async function topicFlashcards(user, topicId, query, learnerView = false) {
   const { preparePracticeCards } = require('./questionTypes');
   const {
     parseQuestionTypes,
@@ -538,7 +539,7 @@ async function topicFlashcards(user, topicId, query) {
   }
   const topic = topicRes.rows[0];
 
-  if (!isStaff(user.role)) {
+  if (shouldRestrictToEnrolledSubjects(user, learnerView)) {
     const enrolled = await db.query(
       'SELECT 1 FROM user_subjects WHERE user_id = $1 AND subject_id = $2 LIMIT 1',
       [user.id, topic.subject_id]
@@ -621,9 +622,9 @@ async function topicFlashcards(user, topicId, query) {
   };
 }
 
-async function dashboardSubjects(user) {
+async function dashboardSubjects(user, learnerView = false) {
   let subjectIds = null;
-  if (!isStaff(user.role)) {
+  if (shouldRestrictToEnrolledSubjects(user, learnerView)) {
     const enrolled = await db.query(
       'SELECT subject_id FROM user_subjects WHERE user_id = $1',
       [user.id]
@@ -773,7 +774,8 @@ async function profile(user, query) {
 }
 
 /** Returns { status, body } or null if this handler does not apply. */
-async function tryHandle(method, path, query, authHeader, body = null) {
+async function tryHandle(method, path, query, authHeader, body = null, requestHeaders = {}) {
+  const learnerView = isLearnerViewRequest(requestHeaders);
   if (method === 'POST' && match(path, '/admin/flashcards/import')) {
     const auth = await requireUser(authHeader);
     if (auth.error) return auth.error;
@@ -849,14 +851,14 @@ async function tryHandle(method, path, query, authHeader, body = null) {
     const auth = await requireUser(authHeader, { requireVerified: true });
     if (auth.error) return auth.error;
     if (!body) return { status: 400, body: { error: 'Request body required' } };
-    return subjectsEnroll(auth.user, body);
+    return subjectsEnroll(auth.user, body, learnerView);
   }
 
   if (method === 'POST' && progressPath(path)) {
     const auth = await requireUser(authHeader, { requireVerified: true });
     if (auth.error) return auth.error;
     const { saveProgressFast } = require('./progressFast');
-    return saveProgressFast(auth.user, body);
+    return saveProgressFast(auth.user, body, learnerView);
   }
 
   if (method !== 'GET') return null;
@@ -913,12 +915,12 @@ async function tryHandle(method, path, query, authHeader, body = null) {
 
   const topicIdForFlashcards = parseTopicFlashcardsPath(path);
   if (topicIdForFlashcards) {
-    return topicFlashcards(user, topicIdForFlashcards, query);
+    return topicFlashcards(user, topicIdForFlashcards, query, learnerView);
   }
 
   const subjectIdForTopics = parseSubjectTopicsPath(path);
   if (subjectIdForTopics) {
-    return subjectTopics(user, subjectIdForTopics, query);
+    return subjectTopics(user, subjectIdForTopics, query, learnerView);
   }
 
   const subjectsPath = path.replace(/\/$/, '');
@@ -927,11 +929,11 @@ async function tryHandle(method, path, query, authHeader, body = null) {
     !path.includes('/catalog') &&
     !path.includes('/available')
   ) {
-    return dashboardSubjects(user);
+    return dashboardSubjects(user, learnerView);
   }
 
   if (subjectsAvailablePath(path)) {
-    return subjectsAvailable(user);
+    return subjectsAvailable(user, learnerView);
   }
 
   if (match(path, '/profile')) {

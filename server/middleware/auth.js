@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
+const { isStaff } = require('../lib/roles');
+const { isLearnerViewRequest } = require('../lib/learnerView');
 
 async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -28,6 +30,7 @@ async function authMiddleware(req, res, next) {
     }
 
     req.user = user;
+    req.learnerView = isStaff(user.role) && isLearnerViewRequest(req.headers);
     next();
   } catch {
     return res.status(401).json({ error: 'Invalid or expired token' });
