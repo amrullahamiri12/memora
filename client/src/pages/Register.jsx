@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../utils/api';
 import AuthPanel from '../components/AuthPanel';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
