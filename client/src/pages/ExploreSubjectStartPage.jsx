@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
 import { isGuestUser } from '../utils/guest';
+import { deriveEnrollmentQuota, enrollmentLimitApplies } from '../utils/enrollmentQuota';
 import { subjectAccent } from '../utils/studyStorage';
 import { startSubjectAsGuest, START_SUBJECT_ERRORS } from '../utils/startSubjectAsGuest';
 import Alert from '../components/ui/Alert';
@@ -31,6 +32,7 @@ export default function ExploreSubjectStartPage() {
   const [guestLoading, setGuestLoading] = useState(false);
   const [autoStarting, setAutoStarting] = useState(false);
   const [error, setError] = useState('');
+  const [enrollmentLimitHit, setEnrollmentLimitHit] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,6 +65,41 @@ export default function ExploreSubjectStartPage() {
       cancelled = true;
     };
   }, [subjectId]);
+
+  useEffect(() => {
+    if (authLoading || loading || !subject || !user) return;
+
+    let cancelled = false;
+
+    async function checkEnrollment() {
+      try {
+        const enrolled = await api('/subjects');
+        if (cancelled) return;
+
+        if (enrolled.some((s) => s.id === subjectId)) {
+          navigate(`/subjects/${subjectId}`, { replace: true });
+          return;
+        }
+
+        if (enrollmentLimitApplies(user)) {
+          const quota = deriveEnrollmentQuota(enrolled);
+          if (!quota.canEnrollMore) {
+            setEnrollmentLimitHit(true);
+            setError(
+              'You already have 3 subjects in progress. Master one or leave a subject from your dashboard to start another.'
+            );
+          }
+        }
+      } catch {
+        // Non-fatal — user can still try Continue as guest
+      }
+    }
+
+    checkEnrollment();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, loading, subject, subjectId, user, navigate]);
 
   useEffect(() => {
     if (authLoading || loading || !subject || !signedInLearner) return;
@@ -100,6 +137,7 @@ export default function ExploreSubjectStartPage() {
   const handleContinueAsGuest = async () => {
     setGuestLoading(true);
     setError('');
+    setEnrollmentLimitHit(false);
     try {
       const result = await startSubjectAsGuest(subjectId, {
         user,
@@ -111,6 +149,7 @@ export default function ExploreSubjectStartPage() {
         return;
       }
       if (result.path && result.code === START_SUBJECT_ERRORS.ENROLLMENT_LIMIT) {
+        setEnrollmentLimitHit(true);
         setError(result.message);
         return;
       }
@@ -227,32 +266,62 @@ export default function ExploreSubjectStartPage() {
               have one, or jump in as a guest — no email required.
             </p>
 
-            {error && <Alert className="mt-5">{error}</Alert>}
+            {error && (
+              <Alert className="mt-5">
+                {error}
+                {enrollmentLimitHit && (
+                  <>
+                    {' '}
+                    <Link to="/dashboard" className="font-semibold text-[var(--accent)] hover:underline">
+                      Open your dashboard
+                    </Link>{' '}
+                    to master or leave a subject.
+                  </>
+                )}
+              </Alert>
+            )}
 
-            <div className="mt-6 space-y-3">
-              <Link
-                to={`/register?subject=${encodeURIComponent(subjectId)}`}
-                className="btn-primary flex w-full justify-center px-5 py-3 text-sm font-semibold"
-              >
-                Create account
-              </Link>
-              <Link
-                to={`/login?subject=${encodeURIComponent(subjectId)}`}
-                className="btn-secondary flex w-full justify-center px-5 py-3 text-sm font-semibold"
-              >
-                Sign in
-              </Link>
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full py-3"
-                loading={guestLoading}
-                loadingText="Starting…"
-                onClick={handleContinueAsGuest}
-              >
-                Continue as guest
-              </Button>
-            </div>
+            {enrollmentLimitHit ? (
+              <div className="mt-6 space-y-3">
+                <Link
+                  to="/dashboard"
+                  className="btn-primary flex w-full justify-center px-5 py-3 text-sm font-semibold"
+                >
+                  Go to dashboard
+                </Link>
+                <Link
+                  to={backTo}
+                  className="btn-secondary flex w-full justify-center px-5 py-3 text-sm font-semibold"
+                >
+                  {backLabel}
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-6 space-y-3">
+                <Link
+                  to={`/register?subject=${encodeURIComponent(subjectId)}`}
+                  className="btn-primary flex w-full justify-center px-5 py-3 text-sm font-semibold"
+                >
+                  Create account
+                </Link>
+                <Link
+                  to={`/login?subject=${encodeURIComponent(subjectId)}`}
+                  className="btn-secondary flex w-full justify-center px-5 py-3 text-sm font-semibold"
+                >
+                  Sign in
+                </Link>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full py-3"
+                  loading={guestLoading}
+                  loadingText="Starting…"
+                  onClick={handleContinueAsGuest}
+                >
+                  Continue as guest
+                </Button>
+              </div>
+            )}
 
             <p className="mt-5 text-center text-xs leading-relaxed text-[var(--text-muted)]">
               Guest sessions let you try up to 3 subjects. You can create an account anytime to keep your
