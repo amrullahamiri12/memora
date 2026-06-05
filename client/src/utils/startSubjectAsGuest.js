@@ -1,7 +1,7 @@
 import { api as defaultApi } from './api';
 import { isGuestUser } from './guest';
 import { isStaff } from './roles';
-import { deriveEnrollmentQuota, enrollmentLimitApplies } from './enrollmentQuota';
+import { deriveEnrollmentQuota, enrollmentLimitApplies, formatEnrollmentLimitError } from './enrollmentQuota';
 import { enableStudentView, isStudentViewActive, withPreviewQuery } from './studentView';
 
 export const START_SUBJECT_ERRORS = {
@@ -84,13 +84,12 @@ export async function startSubjectAsGuest(subjectId, options = {}) {
 
   if (!alreadyEnrolled) {
     if (enrollmentLimitApplies(currentUser)) {
-      const quota = deriveEnrollmentQuota(enrolled);
+      const quota = deriveEnrollmentQuota(enrolled, currentUser);
       if (!quota.canEnrollMore) {
         return {
           ok: false,
           code: START_SUBJECT_ERRORS.ENROLLMENT_LIMIT,
-          message:
-            'You already have 3 subjects in progress. Master one or leave a subject from your dashboard to start another.',
+          message: formatEnrollmentLimitError(currentUser),
           path: '/dashboard',
         };
       }

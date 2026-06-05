@@ -12,7 +12,7 @@ const {
   assertSubjectAccess,
   ensureUserEnrollments,
 } = require('../lib/userSubjects');
-const { deriveQuotaFromSubjects, staffEnrollmentQuota } = require('../lib/enrollmentLimits');
+const { quotaForUser, staffEnrollmentQuota } = require('../lib/enrollmentLimits');
 const { getSubjectsWithProgress, getTopicsWithProgress } = require('../lib/subjectProgress');
 const { parsePagination, paginatedResponse } = require('../lib/pagination');
 const { sortCatalogSubjects, toPublicCatalogItem } = require('../lib/subjectCatalog');
@@ -132,7 +132,7 @@ router.post(
       const subjects = await getSubjectsWithProgress(req.user.id, subjectIds);
       const enrollmentQuota = skipLimitCheck
         ? staffEnrollmentQuota()
-        : deriveQuotaFromSubjects(subjects);
+        : quotaForUser(subjects, req.user);
       res.json({
         message: `Added ${enrolled.length} subject(s)`,
         subjects,
@@ -160,7 +160,7 @@ router.delete('/:id/enroll', async (req, res) => {
     const subjects = await getSubjectsWithProgress(req.user.id, subjectIds);
     const enrollmentQuota = isStaff(req.user.role)
       ? staffEnrollmentQuota()
-      : deriveQuotaFromSubjects(subjects);
+      : quotaForUser(subjects, req.user);
     res.json({
       message: 'Subject removed from your list',
       subjects,

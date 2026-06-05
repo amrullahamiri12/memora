@@ -117,12 +117,12 @@ async function register({ name, email, password, subjectIds }, ctx = {}) {
     return { status: 400, body: { error: 'Select at least one subject to practice' } };
   }
 
-  const { MAX_ACTIVE_SUBJECTS } = require('./enrollmentLimits');
-  if (ids.length > MAX_ACTIVE_SUBJECTS) {
+  const { MAX_ACTIVE_SUBJECTS_REGISTERED } = require('./enrollmentLimits');
+  if (ids.length > MAX_ACTIVE_SUBJECTS_REGISTERED) {
     return {
       status: 422,
       body: {
-        error: `You can enroll in a maximum of ${MAX_ACTIVE_SUBJECTS} subjects at a time.`,
+        error: `You can enroll in a maximum of ${MAX_ACTIVE_SUBJECTS_REGISTERED} subjects at a time.`,
         code: 'SUBJECT_LIMIT_REACHED',
       },
     };
@@ -437,12 +437,12 @@ async function loginWithGoogle({ credential, subjectIds }, ctx = {}) {
   }
 
   const ids = (subjectIds || []).filter((id) => typeof id === 'string' && id.trim());
-  const { MAX_ACTIVE_SUBJECTS } = require('./enrollmentLimits');
-  if (ids.length > MAX_ACTIVE_SUBJECTS) {
+  const { MAX_ACTIVE_SUBJECTS_REGISTERED } = require('./enrollmentLimits');
+  if (ids.length > MAX_ACTIVE_SUBJECTS_REGISTERED) {
     return {
       status: 422,
       body: {
-        error: `You can enroll in a maximum of ${MAX_ACTIVE_SUBJECTS} subjects at a time.`,
+        error: `You can enroll in a maximum of ${MAX_ACTIVE_SUBJECTS_REGISTERED} subjects at a time.`,
         code: 'SUBJECT_LIMIT_REACHED',
       },
     };

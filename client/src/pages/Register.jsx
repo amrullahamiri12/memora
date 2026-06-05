@@ -8,7 +8,7 @@ import Alert from '../components/ui/Alert';
 import AuthPageTopBar from '../components/AuthPageTopBar';
 import AuthFormHeader from '../components/AuthFormHeader';
 import SubjectPicker from '../components/SubjectPicker';
-import { api } from '../utils/api';
+import { MAX_ACTIVE_SUBJECTS_REGISTERED } from '../utils/enrollmentQuota';
 import ContinueAsGuestButton from '../components/ContinueAsGuestButton';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 
@@ -125,7 +125,7 @@ export default function Register() {
                 Subjects to practice
               </p>
               <p className="mb-3 text-xs text-[var(--text-muted)]">
-                Pick up to 3 subjects now. You can add more later after mastering active subjects.
+                Pick up to {MAX_ACTIVE_SUBJECTS_REGISTERED} subjects now. You can add more later after mastering active subjects.
               </p>
               {catalogLoading ? (
                 <p className="text-sm text-[var(--text-muted)]">Loading subjects…</p>
@@ -144,7 +144,7 @@ export default function Register() {
                   selectedIds={subjectIds}
                   onChange={setSubjectIds}
                   disabled={loading}
-                  maxSelectable={3}
+                  maxSelectable={MAX_ACTIVE_SUBJECTS_REGISTERED}
                 />
               )}
             </div>

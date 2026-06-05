@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import Card from './ui/Card';
 import Button from './ui/Button';
@@ -5,11 +6,14 @@ import Alert from './ui/Alert';
 import SubjectPicker from './SubjectPicker';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
+import { isGuestUser } from '../utils/guest';
 import {
   AT_ACTIVE_LIMIT_HINT,
   deriveEnrollmentQuota,
   enrollmentLimitApplies,
-  MAX_ACTIVE_SUBJECTS,
+  formatAtLimitMessage,
+  getMaxActiveSubjects,
+  GUEST_UPSELL_HINT,
 } from '../utils/enrollmentQuota';
 
 async function fetchSubjectCatalog() {
@@ -61,10 +65,12 @@ export default function AddSubjectsPanel({
     if (defaultExpanded) setExpanded(true);
   }, [defaultExpanded]);
 
-  const enrollmentQuota = limitApplies ? deriveEnrollmentQuota(enrolledSubjects) : null;
+  const enrollmentQuota = limitApplies ? deriveEnrollmentQuota(enrolledSubjects, user) : null;
+  const subjectLimit = getMaxActiveSubjects(user);
+  const isGuest = isGuestUser(user);
   const maxSelectable = limitApplies
     ? defaultExpanded
-      ? MAX_ACTIVE_SUBJECTS
+      ? subjectLimit
       : enrollmentQuota.spotsRemaining
     : null;
 
@@ -145,7 +151,7 @@ export default function AddSubjectsPanel({
         <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
           {limitApplies && enrollmentQuota.spotsRemaining === 0
-            ? `You are at the ${MAX_ACTIVE_SUBJECTS}-subject active limit. ${AT_ACTIVE_LIMIT_HINT}`
+            ? formatAtLimitMessage(user)
             : 'You are enrolled in every subject available.'}
         </p>
       </Card>
@@ -160,10 +166,14 @@ export default function AddSubjectsPanel({
           <p className="text-sm text-[var(--text-muted)]">
             {defaultExpanded
               ? limitApplies
-                ? `Select up to ${MAX_ACTIVE_SUBJECTS} subjects to get started`
+                ? isGuest
+                  ? `Select up to ${subjectLimit} subjects to get started. ${GUEST_UPSELL_HINT}`
+                  : `Select up to ${subjectLimit} subjects to get started`
                 : 'Select one or more subjects to get started'
               : limitApplies && enrollmentQuota.spotsRemaining === 0
-                ? `At the ${MAX_ACTIVE_SUBJECTS}-subject limit. ${AT_ACTIVE_LIMIT_HINT}`
+                ? isGuest
+                  ? formatAtLimitMessage(user)
+                  : `At the ${subjectLimit}-subject limit. ${AT_ACTIVE_LIMIT_HINT}`
                 : limitApplies
                   ? `Expand what you study — ${available.length} available · ${enrollmentQuota.spotsRemaining} active slot${enrollmentQuota.spotsRemaining === 1 ? '' : 's'} left`
                   : `Expand what you study — ${available.length} available`}
@@ -185,7 +195,15 @@ export default function AddSubjectsPanel({
         <div className="mt-5">
           {limitApplies && enrollmentQuota.spotsRemaining === 0 && (
             <Alert type="warning">
-              You already have {MAX_ACTIVE_SUBJECTS} active subjects. {AT_ACTIVE_LIMIT_HINT}
+              {formatAtLimitMessage(user)}
+              {isGuest && (
+                <span className="mt-2 block">
+                  <Link to="/register" className="font-semibold text-[var(--accent)] hover:underline">
+                    Create a free account
+                  </Link>{' '}
+                  to practice up to 5 subjects.
+                </span>
+              )}
             </Alert>
           )}
           {error && <Alert>{error}</Alert>}

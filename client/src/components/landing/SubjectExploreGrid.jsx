@@ -92,6 +92,7 @@ export default function SubjectExploreGrid({
   const [query, setQuery] = useState('');
   const [startingId, setStartingId] = useState(null);
   const [startError, setStartError] = useState('');
+  const [startErrorCode, setStartErrorCode] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -136,6 +137,7 @@ export default function SubjectExploreGrid({
 
     setStartingId(subjectId);
     setStartError('');
+    setStartErrorCode('');
     try {
       const result = await startSubjectAsGuest(subjectId, {
         user,
@@ -147,6 +149,7 @@ export default function SubjectExploreGrid({
         return;
       }
       if (result.path && result.code === START_SUBJECT_ERRORS.ENROLLMENT_LIMIT) {
+        setStartErrorCode(result.code);
         setStartError(result.message);
         return;
       }
@@ -238,13 +241,21 @@ export default function SubjectExploreGrid({
       {startError && (
         <Alert className="mb-5">
           {startError}
-          {startError.includes('3 subjects') && (
+          {startErrorCode === START_SUBJECT_ERRORS.ENROLLMENT_LIMIT && (
             <>
               {' '}
-              <Link to="/dashboard" className="font-semibold text-[var(--accent)] hover:underline">
-                Open your dashboard
-              </Link>{' '}
-              to manage subjects.
+              {(!user || isGuestUser(user)) ? (
+                <Link to="/register" className="font-semibold text-[var(--accent)] hover:underline">
+                  Sign up for more subjects
+                </Link>
+              ) : (
+                <>
+                  <Link to="/dashboard" className="font-semibold text-[var(--accent)] hover:underline">
+                    Open your dashboard
+                  </Link>{' '}
+                  to manage subjects.
+                </>
+              )}
             </>
           )}
         </Alert>

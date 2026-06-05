@@ -3,7 +3,13 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
 import { isGuestUser } from '../utils/guest';
-import { deriveEnrollmentQuota, enrollmentLimitApplies } from '../utils/enrollmentQuota';
+import {
+  deriveEnrollmentQuota,
+  enrollmentLimitApplies,
+  formatEnrollmentLimitError,
+  GUEST_UPSELL_HINT,
+  MAX_ACTIVE_SUBJECTS_GUEST,
+} from '../utils/enrollmentQuota';
 import { subjectAccent } from '../utils/studyStorage';
 import { startSubjectAsGuest, START_SUBJECT_ERRORS } from '../utils/startSubjectAsGuest';
 import Alert from '../components/ui/Alert';
@@ -82,12 +88,10 @@ export default function ExploreSubjectStartPage() {
         }
 
         if (enrollmentLimitApplies(user)) {
-          const quota = deriveEnrollmentQuota(enrolled);
+          const quota = deriveEnrollmentQuota(enrolled, user);
           if (!quota.canEnrollMore) {
             setEnrollmentLimitHit(true);
-            setError(
-              'You already have 3 subjects in progress. Master one or leave a subject from your dashboard to start another.'
-            );
+            setError(formatEnrollmentLimitError(user));
           }
         }
       } catch {
@@ -166,6 +170,7 @@ export default function ExploreSubjectStartPage() {
   };
 
   const accent = subject ? subjectAccent(subject.name) : null;
+  const guestAtLimit = enrollmentLimitHit && (!user || isGuestUser(user));
 
   if (loading || authLoading || autoStarting || (signedInLearner && !error)) {
     return (
@@ -269,7 +274,7 @@ export default function ExploreSubjectStartPage() {
             {error && (
               <Alert className="mt-5">
                 {error}
-                {enrollmentLimitHit && (
+                {enrollmentLimitHit && !guestAtLimit && (
                   <>
                     {' '}
                     <Link to="/dashboard" className="font-semibold text-[var(--accent)] hover:underline">
@@ -283,18 +288,37 @@ export default function ExploreSubjectStartPage() {
 
             {enrollmentLimitHit ? (
               <div className="mt-6 space-y-3">
-                <Link
-                  to="/dashboard"
-                  className="btn-primary flex w-full justify-center px-5 py-3 text-sm font-semibold"
-                >
-                  Go to dashboard
-                </Link>
-                <Link
-                  to={backTo}
-                  className="btn-secondary flex w-full justify-center px-5 py-3 text-sm font-semibold"
-                >
-                  {backLabel}
-                </Link>
+                {guestAtLimit ? (
+                  <>
+                    <Link
+                      to={`/register?subject=${encodeURIComponent(subjectId)}`}
+                      className="btn-primary flex w-full justify-center px-5 py-3 text-sm font-semibold"
+                    >
+                      Sign up for more subjects
+                    </Link>
+                    <Link
+                      to="/dashboard"
+                      className="btn-secondary flex w-full justify-center px-5 py-3 text-sm font-semibold"
+                    >
+                      Go to dashboard
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to="/dashboard"
+                      className="btn-primary flex w-full justify-center px-5 py-3 text-sm font-semibold"
+                    >
+                      Go to dashboard
+                    </Link>
+                    <Link
+                      to={backTo}
+                      className="btn-secondary flex w-full justify-center px-5 py-3 text-sm font-semibold"
+                    >
+                      {backLabel}
+                    </Link>
+                  </>
+                )}
               </div>
             ) : (
               <div className="mt-6 space-y-3">
@@ -324,8 +348,7 @@ export default function ExploreSubjectStartPage() {
             )}
 
             <p className="mt-5 text-center text-xs leading-relaxed text-[var(--text-muted)]">
-              Guest sessions let you try up to 3 subjects. You can create an account anytime to keep your
-              progress.
+              Guest sessions let you try up to {MAX_ACTIVE_SUBJECTS_GUEST} subjects. {GUEST_UPSELL_HINT}
             </p>
           </div>
         </Card>

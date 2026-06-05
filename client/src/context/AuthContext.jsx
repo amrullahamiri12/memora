@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api, getToken, setToken, removeToken } from '../utils/api';
+import { getOrCreateDeviceId } from '../utils/deviceId';
 import { disableStudentView } from '../utils/studentView';
 import { clearGoogleSession, rememberGoogleSignIn } from '../utils/googleAuthSession';
 
@@ -69,9 +70,10 @@ export function AuthProvider({ children }) {
   };
 
   const continueAsGuest = async () => {
+    const deviceId = getOrCreateDeviceId();
     const data = await api('/auth/guest', {
       method: 'POST',
-      body: JSON.stringify({}),
+      body: JSON.stringify(deviceId ? { deviceId } : {}),
     });
     setUser(applyAuthResponse(data));
     return data.user;

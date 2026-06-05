@@ -37,8 +37,7 @@ export default function ExplorePage() {
       <Card className="mt-10 p-6 text-center sm:p-8">
         <p className="font-medium text-[var(--text-heading)]">Want to pick several subjects first?</p>
         <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-[var(--text-muted)]">
-          You can enroll in up to three at once as a guest, or create a full account to unlock
-          verification email and long-term progress.
+          You can enroll in up to three subjects at once as a guest, or create a full account to study up to five.
         </p>
         <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
           <Link to="/register" className="btn-primary inline-flex px-5 py-2.5 text-sm font-semibold">

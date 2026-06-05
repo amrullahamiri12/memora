@@ -58,7 +58,7 @@ router.post(
 
 router.post('/guest', async (req, res) => {
   try {
-    send(res, await fastAuth.createGuest());
+    send(res, await fastAuth.createGuest(req.body || {}));
   } catch (err) {
     console.error('Guest auth error:', err);
     res.status(500).json({ error: 'Could not start guest session' });

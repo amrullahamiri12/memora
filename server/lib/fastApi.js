@@ -583,10 +583,10 @@ async function subjectsUnenroll(user, subjectId, learnerView = false) {
   }
 
   const dash = await dashboardSubjects(user, learnerView);
-  const { deriveQuotaFromSubjects, staffEnrollmentQuota } = require('./enrollmentLimits');
+  const { quotaForUser, staffEnrollmentQuota } = require('./enrollmentLimits');
   const enrollmentQuota = isStaff(user.role)
     ? staffEnrollmentQuota()
-    : deriveQuotaFromSubjects(dash.body);
+    : quotaForUser(dash.body, user);
   return {
     status: 200,
     body: {
@@ -607,11 +607,11 @@ async function subjectsEnroll(user, body, learnerView = false) {
     return { status: 400, body: { error: 'Select at least one subject' } };
   }
 
-  const { deriveQuotaFromSubjects, staffEnrollmentQuota } = require('./enrollmentLimits');
+  const { quotaForUser, staffEnrollmentQuota } = require('./enrollmentLimits');
   const { assertCanEnrollSubjectsFast } = require('./enrollmentLimitsFast');
   if (!isStaff(user.role)) {
     try {
-      await assertCanEnrollSubjectsFast(user.id, ids);
+      await assertCanEnrollSubjectsFast(user, ids);
     } catch (limitErr) {
       if (limitErr.code === 'SUBJECT_LIMIT_REACHED') {
         return { status: limitErr.status, body: { error: limitErr.message, code: limitErr.code } };
@@ -628,7 +628,7 @@ async function subjectsEnroll(user, body, learnerView = false) {
   const dash = await dashboardSubjects(user, learnerView);
   const enrollmentQuota = isStaff(user.role)
     ? staffEnrollmentQuota()
-    : deriveQuotaFromSubjects(dash.body);
+    : quotaForUser(dash.body, user);
   return {
     status: 200,
     body: {

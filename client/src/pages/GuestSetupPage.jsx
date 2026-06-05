@@ -9,7 +9,7 @@ import Card from '../components/ui/Card';
 import Spinner from '../components/ui/Spinner';
 import GuestBanner from '../components/GuestBanner';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../utils/api';
+import { MAX_ACTIVE_SUBJECTS_GUEST, GUEST_UPSELL_HINT } from '../utils/enrollmentQuota';
 import { isGuestUser } from '../utils/guest';
 
 export default function GuestSetupPage() {
@@ -49,7 +49,7 @@ export default function GuestSetupPage() {
           .map((id) => id.trim())
           .filter(Boolean);
         if (preselect.length > 0) {
-          const valid = preselect.filter((id) => rows.some((s) => s.id === id)).slice(0, 3);
+          const valid = preselect.filter((id) => rows.some((s) => s.id === id)).slice(0, MAX_ACTIVE_SUBJECTS_GUEST);
           if (valid.length > 0) setSubjectIds(valid);
         }
       } catch (err) {
@@ -91,7 +91,7 @@ export default function GuestSetupPage() {
       <GuestBanner />
       <PageHeader
         title="What do you want to practice?"
-        subtitle="Pick up to 3 subjects for your guest session. You can add more after mastering active subjects."
+        subtitle={`Pick up to ${MAX_ACTIVE_SUBJECTS_GUEST} subjects for your guest session. ${GUEST_UPSELL_HINT}`}
       />
 
       {error && <Alert>{error}</Alert>}
@@ -115,7 +115,7 @@ export default function GuestSetupPage() {
               selectedIds={subjectIds}
               onChange={setSubjectIds}
               disabled={saving}
-              maxSelectable={3}
+              maxSelectable={MAX_ACTIVE_SUBJECTS_GUEST}
             />
             <Button
               type="submit"

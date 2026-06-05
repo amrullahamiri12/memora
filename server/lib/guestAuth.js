@@ -11,18 +11,52 @@ const {
   USER_PUBLIC_COLUMNS,
   authCreated,
   authSuccess,
+  isUserActive,
 } = require('./authUser');
 const { GUEST_EMAIL_SUFFIX, isGuestEmail } = require('./guestIdentity');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-async function createGuest() {
+async function findUserById(userId) {
+  const { rows } = await db.query(
+    `SELECT ${USER_PUBLIC_COLUMNS} FROM users WHERE id = $1 LIMIT 1`,
+    [userId]
+  );
+  return rows[0] || null;
+}
+
+async function createGuest({ deviceId } = {}) {
   const subjectsRes = await db.query('SELECT id FROM subjects LIMIT 1');
   if (!subjectsRes.rows[0]) {
     return {
       status: 503,
       body: { error: 'No subjects available yet. Please try again later.' },
     };
+  }
+
+  const trimmedDeviceId = typeof deviceId === 'string' ? deviceId.trim() : '';
+  if (trimmedDeviceId) {
+    const binding = await db.query(
+      `SELECT user_id FROM guest_device_bindings WHERE device_id = $1 LIMIT 1`,
+      [trimmedDeviceId]
+    );
+    if (binding.rows[0]) {
+      const existing = await findUserById(binding.rows[0].user_id);
+      if (existing && isUserActive(existing)) {
+        if (isGuestEmail(existing.email)) {
+          return authSuccess(existing);
+        }
+        return {
+          status: 409,
+          body: {
+            error:
+              'This device already has a Memora account. Sign in to continue, or use another browser to try as a guest.',
+            code: 'GUEST_DEVICE_REGISTERED',
+          },
+        };
+      }
+      await db.query('DELETE FROM guest_device_bindings WHERE device_id = $1', [trimmedDeviceId]);
+    }
   }
 
   const userId = randomUUID();
@@ -34,6 +68,14 @@ async function createGuest() {
      RETURNING ${USER_PUBLIC_COLUMNS}`,
     [userId, 'Guest', email, passwordHash]
   );
+
+  if (trimmedDeviceId) {
+    await db.query(
+      `INSERT INTO guest_device_bindings (device_id, user_id) VALUES ($1, $2)`,
+      [trimmedDeviceId, userId]
+    );
+  }
+
   return authCreated(rows[0]);
 }
 

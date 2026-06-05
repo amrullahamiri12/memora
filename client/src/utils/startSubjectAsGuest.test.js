@@ -64,11 +64,33 @@ describe('startSubjectAsGuest', () => {
     expect(result.path).toBe('/subjects/sub-1');
   });
 
-  it('returns enrollment limit when learner is at cap', async () => {
+  it('returns enrollment limit when guest is at cap', async () => {
     const enrolled = [
       { id: 'a', progressPercent: 20, totalCards: 10 },
       { id: 'b', progressPercent: 30, totalCards: 10 },
       { id: 'c', progressPercent: 40, totalCards: 10 },
+    ];
+    const api = mockApi({ enrolled });
+
+    const result = await startSubjectAsGuest('sub-1', {
+      user: guest,
+      api,
+      catalog,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.code).toBe(START_SUBJECT_ERRORS.ENROLLMENT_LIMIT);
+    expect(result.message).toMatch(/Sign up/i);
+    expect(api).not.toHaveBeenCalledWith('/subjects/enroll', expect.any(Object));
+  });
+
+  it('returns enrollment limit when registered learner is at cap', async () => {
+    const enrolled = [
+      { id: 'a', progressPercent: 20, totalCards: 10 },
+      { id: 'b', progressPercent: 30, totalCards: 10 },
+      { id: 'c', progressPercent: 40, totalCards: 10 },
+      { id: 'd', progressPercent: 50, totalCards: 10 },
+      { id: 'e', progressPercent: 60, totalCards: 10 },
     ];
     const api = mockApi({ enrolled });
 

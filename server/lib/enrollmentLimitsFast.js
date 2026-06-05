@@ -1,5 +1,11 @@
 const db = require('./pg');
-const { deriveQuotaFromSubjects, createLimitError } = require('./enrollmentLimits');
+const {
+  deriveQuotaFromSubjects,
+  createLimitError,
+  getMaxActiveSubjects,
+  quotaForUser,
+  resolveUserEmail,
+} = require('./enrollmentLimits');
 
 async function loadEnrolledSubjectsWithProgress(userId) {
   const enrolled = await db.query(
@@ -54,10 +60,12 @@ async function loadEnrolledSubjectsWithProgress(userId) {
   });
 }
 
-async function assertCanEnrollSubjectsFast(userId, subjectIds) {
+async function assertCanEnrollSubjectsFast(userOrId, subjectIds) {
+  const email = await resolveUserEmail(userOrId);
+  const userId = typeof userOrId === 'object' ? userOrId.id : userOrId;
   const unique = [...new Set(subjectIds.filter((id) => typeof id === 'string' && id.trim()))];
   if (unique.length === 0) {
-    return { newIds: [], quota: deriveQuotaFromSubjects([]) };
+    return { newIds: [], quota: deriveQuotaFromSubjects([], getMaxActiveSubjects(email)) };
   }
 
   const enrolledSubjects = await loadEnrolledSubjectsWithProgress(userId);
@@ -65,12 +73,12 @@ async function assertCanEnrollSubjectsFast(userId, subjectIds) {
   const newIds = unique.filter((id) => !enrolledSet.has(id));
 
   if (newIds.length === 0) {
-    return { newIds: [], quota: deriveQuotaFromSubjects(enrolledSubjects) };
+    return { newIds: [], quota: quotaForUser(enrolledSubjects, email) };
   }
 
-  const quota = deriveQuotaFromSubjects(enrolledSubjects);
+  const quota = quotaForUser(enrolledSubjects, email);
   if (newIds.length > quota.spotsRemaining) {
-    throw createLimitError(quota.spotsRemaining, newIds.length);
+    throw createLimitError(quota.spotsRemaining, newIds.length, email);
   }
 
   return { newIds, quota };
