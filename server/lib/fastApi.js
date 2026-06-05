@@ -137,6 +137,116 @@ async function adminSubjects() {
   return { status: 200, body: Array.from(map.values()) };
 }
 
+async function createAdminSubject(body) {
+  const name = (body?.name || '').trim();
+  if (!name) return { status: 400, body: { error: 'Subject name is required' } };
+
+  const existing = await db.query('SELECT id FROM subjects WHERE name = $1 LIMIT 1', [name]);
+  if (existing.rows[0]) {
+    return { status: 409, body: { error: 'Subject already exists' } };
+  }
+
+  const id = randomUUID();
+  await db.query('INSERT INTO subjects (id, name) VALUES ($1, $2)', [id, name]);
+  return {
+    status: 201,
+    body: { id, name, topicCount: 0, cardCount: 0, topics: [] },
+  };
+}
+
+async function updateAdminSubject(subjectId, body) {
+  const name = (body?.name || '').trim();
+  if (!name) return { status: 400, body: { error: 'Subject name is required' } };
+
+  const conflict = await db.query(
+    'SELECT id FROM subjects WHERE name = $1 AND id <> $2 LIMIT 1',
+    [name, subjectId]
+  );
+  if (conflict.rows[0]) {
+    return { status: 409, body: { error: 'Subject name already in use' } };
+  }
+
+  const result = await db.query(
+    'UPDATE subjects SET name = $1 WHERE id = $2 RETURNING id, name',
+    [name, subjectId]
+  );
+  if (!result.rows[0]) {
+    return { status: 404, body: { error: 'Subject not found' } };
+  }
+  return { status: 200, body: result.rows[0] };
+}
+
+async function deleteAdminSubject(subjectId) {
+  const result = await db.query('DELETE FROM subjects WHERE id = $1 RETURNING id', [subjectId]);
+  if (!result.rows[0]) {
+    return { status: 404, body: { error: 'Subject not found' } };
+  }
+  return { status: 200, body: { message: 'Subject deleted' } };
+}
+
+async function createAdminTopic(body) {
+  const subjectId = body?.subjectId;
+  const name = (body?.name || '').trim();
+  if (!subjectId) return { status: 400, body: { error: 'Subject ID is required' } };
+  if (!name) return { status: 400, body: { error: 'Topic name is required' } };
+
+  const subject = await db.query('SELECT id FROM subjects WHERE id = $1 LIMIT 1', [subjectId]);
+  if (!subject.rows[0]) {
+    return { status: 404, body: { error: 'Subject not found' } };
+  }
+
+  const existing = await db.query(
+    'SELECT id FROM topics WHERE subject_id = $1 AND name = $2 LIMIT 1',
+    [subjectId, name]
+  );
+  if (existing.rows[0]) {
+    return { status: 409, body: { error: 'Topic already exists in this subject' } };
+  }
+
+  const id = randomUUID();
+  await db.query('INSERT INTO topics (id, subject_id, name) VALUES ($1, $2, $3)', [
+    id,
+    subjectId,
+    name,
+  ]);
+  return { status: 201, body: { id, name, subjectId, cardCount: 0 } };
+}
+
+async function updateAdminTopic(topicId, body) {
+  const name = (body?.name || '').trim();
+  if (!name) return { status: 400, body: { error: 'Topic name is required' } };
+
+  const topicRes = await db.query('SELECT id, subject_id FROM topics WHERE id = $1 LIMIT 1', [
+    topicId,
+  ]);
+  const topic = topicRes.rows[0];
+  if (!topic) {
+    return { status: 404, body: { error: 'Topic not found' } };
+  }
+
+  const conflict = await db.query(
+    'SELECT id FROM topics WHERE subject_id = $1 AND name = $2 AND id <> $3 LIMIT 1',
+    [topic.subject_id, name, topicId]
+  );
+  if (conflict.rows[0]) {
+    return { status: 409, body: { error: 'Topic name already exists in this subject' } };
+  }
+
+  const result = await db.query(
+    'UPDATE topics SET name = $1 WHERE id = $2 RETURNING id, name, subject_id AS "subjectId"',
+    [name, topicId]
+  );
+  return { status: 200, body: result.rows[0] };
+}
+
+async function deleteAdminTopic(topicId) {
+  const result = await db.query('DELETE FROM topics WHERE id = $1 RETURNING id', [topicId]);
+  if (!result.rows[0]) {
+    return { status: 404, body: { error: 'Topic not found' } };
+  }
+  return { status: 200, body: { message: 'Topic deleted' } };
+}
+
 const GUEST_EMAIL_PATTERN = '%@guest.memora.local';
 
 async function adminUsers(query) {
@@ -932,6 +1042,54 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
     return saveProgressFast(auth.user, body, learnerView);
   }
 
+  if (method === 'POST' && adminSubjectsListPath(path)) {
+    const auth = await requireUser(authHeader);
+    if (auth.error) return auth.error;
+    if (!isStaff(auth.user.role)) {
+      return { status: 403, body: { error: 'Admin access required' } };
+    }
+    if (!body) return { status: 400, body: { error: 'Request body required' } };
+    return createAdminSubject(body);
+  }
+
+  const adminSubjectId = parseAdminSubjectId(path);
+  if (adminSubjectId && (method === 'PUT' || method === 'DELETE')) {
+    const auth = await requireUser(authHeader);
+    if (auth.error) return auth.error;
+    if (!isStaff(auth.user.role)) {
+      return { status: 403, body: { error: 'Admin access required' } };
+    }
+    if (method === 'PUT') {
+      if (!body) return { status: 400, body: { error: 'Request body required' } };
+      return updateAdminSubject(adminSubjectId, body);
+    }
+    return deleteAdminSubject(adminSubjectId);
+  }
+
+  if (method === 'POST' && adminTopicsListPath(path)) {
+    const auth = await requireUser(authHeader);
+    if (auth.error) return auth.error;
+    if (!isStaff(auth.user.role)) {
+      return { status: 403, body: { error: 'Admin access required' } };
+    }
+    if (!body) return { status: 400, body: { error: 'Request body required' } };
+    return createAdminTopic(body);
+  }
+
+  const adminTopicId = parseAdminTopicId(path);
+  if (adminTopicId && (method === 'PUT' || method === 'DELETE')) {
+    const auth = await requireUser(authHeader);
+    if (auth.error) return auth.error;
+    if (!isStaff(auth.user.role)) {
+      return { status: 403, body: { error: 'Admin access required' } };
+    }
+    if (method === 'PUT') {
+      if (!body) return { status: 400, body: { error: 'Request body required' } };
+      return updateAdminTopic(adminTopicId, body);
+    }
+    return deleteAdminTopic(adminTopicId);
+  }
+
   if (method !== 'GET') return null;
 
   const needsAuth =
@@ -1046,6 +1204,26 @@ function match(path, suffix) {
 function adminUsersListPath(path) {
   const normalized = path.replace(/\/$/, '');
   return normalized === '/admin/users' || normalized === '/api/admin/users';
+}
+
+function adminSubjectsListPath(path) {
+  const normalized = path.replace(/\/$/, '');
+  return normalized === '/admin/subjects' || normalized === '/api/admin/subjects';
+}
+
+function parseAdminSubjectId(path) {
+  const m = path.match(/(?:\/api)?\/admin\/subjects\/([^/?]+)$/);
+  return m ? m[1] : null;
+}
+
+function adminTopicsListPath(path) {
+  const normalized = path.replace(/\/$/, '');
+  return normalized === '/admin/topics' || normalized === '/api/admin/topics';
+}
+
+function parseAdminTopicId(path) {
+  const m = path.match(/(?:\/api)?\/admin\/topics\/([^/?]+)$/);
+  return m ? m[1] : null;
 }
 
 function parseAdminUserVerifyPath(path) {

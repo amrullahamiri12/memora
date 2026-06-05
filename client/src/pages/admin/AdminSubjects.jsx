@@ -18,6 +18,7 @@ function defaultCollapsedIds(subjects) {
 export default function AdminSubjects() {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [newSubject, setNewSubject] = useState('');
   const [editingSubject, setEditingSubject] = useState(null);
@@ -55,8 +56,9 @@ export default function AdminSubjects() {
     setCollapsedIds(new Set(subjects.map((s) => s.id)));
   };
 
-  const loadSubjects = ({ expandSubjectId } = {}) => {
-    setLoading(true);
+  const loadSubjects = ({ expandSubjectId, initial = false } = {}) => {
+    if (initial) setLoading(true);
+    else setRefreshing(true);
     api('/admin/subjects')
       .then((data) => {
         setSubjects(data);
@@ -72,11 +74,14 @@ export default function AdminSubjects() {
         }
       })
       .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (initial) setLoading(false);
+        else setRefreshing(false);
+      });
   };
 
   useEffect(() => {
-    loadSubjects();
+    loadSubjects({ initial: true });
   }, []);
 
   const handleAddSubject = async (e) => {
@@ -204,7 +209,7 @@ export default function AdminSubjects() {
       ) : subjects.length === 0 ? (
         <EmptyState message="No subjects yet. Add one above or import flashcards via CSV." />
       ) : (
-        <div className="space-y-4">
+        <div className={`space-y-4 ${refreshing ? 'opacity-60 pointer-events-none' : ''}`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-[var(--text-muted)]">
               Subjects are collapsed by default. Click a subject or the arrow to expand and see its
