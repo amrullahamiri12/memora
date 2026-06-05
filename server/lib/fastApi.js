@@ -412,14 +412,11 @@ async function subjectsEnroll(user, body, learnerView = false) {
     return { status: 400, body: { error: 'Select at least one subject' } };
   }
 
-  const {
-    assertCanEnrollSubjects,
-    deriveQuotaFromSubjects,
-    staffEnrollmentQuota,
-  } = require('./enrollmentLimits');
+  const { deriveQuotaFromSubjects, staffEnrollmentQuota } = require('./enrollmentLimits');
+  const { assertCanEnrollSubjectsFast } = require('./enrollmentLimitsFast');
   if (!isStaff(user.role)) {
     try {
-      await assertCanEnrollSubjects(user.id, ids);
+      await assertCanEnrollSubjectsFast(user.id, ids);
     } catch (limitErr) {
       if (limitErr.code === 'SUBJECT_LIMIT_REACHED') {
         return { status: limitErr.status, body: { error: limitErr.message, code: limitErr.code } };
