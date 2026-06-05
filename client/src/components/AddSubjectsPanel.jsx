@@ -169,14 +169,16 @@ export default function AddSubjectsPanel({
                   : `Expand what you study — ${available.length} available`}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          className="text-sm"
-          onClick={() => setExpanded((e) => !e)}
-        >
-          {expanded ? 'Hide' : 'Browse subjects'}
-        </Button>
+        {!defaultExpanded && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="text-sm"
+            onClick={() => setExpanded((e) => !e)}
+          >
+            {expanded ? 'Hide' : 'Browse subjects'}
+          </Button>
+        )}
       </div>
 
       {(expanded || defaultExpanded) && (

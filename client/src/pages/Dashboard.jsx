@@ -12,7 +12,7 @@ import { SubjectCardSkeleton } from '../components/ui/Skeleton';
 import { api } from '../utils/api';
 import { getLastTopic, subjectAccent } from '../utils/studyStorage';
 import { isGuestUser } from '../utils/guest';
-import { usesLearnerEnrollment } from '../utils/enrollmentQuota';
+import { useLearnerEnrollment } from '../hooks/useLearnerEnrollment';
 import GuestBanner from '../components/GuestBanner';
 
 export default function Dashboard() {
@@ -24,7 +24,7 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [leavingId, setLeavingId] = useState(null);
   const lastTopic = getLastTopic();
-  const learnerEnrollment = usesLearnerEnrollment(user);
+  const learnerEnrollment = useLearnerEnrollment();
 
   const loadDashboard = () => {
     setLoading(true);
@@ -115,10 +115,7 @@ export default function Dashboard() {
         <AddSubjectsPanel
           defaultExpanded={!loading && subjects.length === 0}
           enrolledSubjects={subjects}
-          onEnrolled={(next) => {
-            setSubjects(next);
-            loadDashboard();
-          }}
+          onEnrolled={setSubjects}
         />
       )}
 

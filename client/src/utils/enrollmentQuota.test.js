@@ -8,12 +8,10 @@ describe('usesLearnerEnrollment', () => {
   });
 
   it('applies to staff only in learner preview', () => {
-    sessionStorage.setItem('memora_student_view', '1');
-    expect(usesLearnerEnrollment({ role: 'ADMIN' })).toBe(true);
-    expect(usesLearnerEnrollment({ role: 'SUPER_ADMIN' })).toBe(true);
-    sessionStorage.removeItem('memora_student_view');
-    expect(usesLearnerEnrollment({ role: 'ADMIN' })).toBe(false);
-    expect(usesLearnerEnrollment({ role: 'SUPER_ADMIN' })).toBe(false);
+    expect(usesLearnerEnrollment({ role: 'ADMIN' }, true)).toBe(true);
+    expect(usesLearnerEnrollment({ role: 'SUPER_ADMIN' }, true)).toBe(true);
+    expect(usesLearnerEnrollment({ role: 'ADMIN' }, false)).toBe(false);
+    expect(usesLearnerEnrollment({ role: 'SUPER_ADMIN' }, false)).toBe(false);
   });
 });
 
@@ -26,9 +24,7 @@ describe('enrollmentLimitApplies', () => {
   });
 
   it('does not apply to staff in learner preview', () => {
-    sessionStorage.setItem('memora_student_view', '1');
     expect(enrollmentLimitApplies({ role: 'ADMIN' })).toBe(false);
     expect(enrollmentLimitApplies({ role: 'SUPER_ADMIN' })).toBe(false);
-    sessionStorage.removeItem('memora_student_view');
   });
 });
