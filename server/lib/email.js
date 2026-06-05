@@ -6,6 +6,8 @@ function appUrl() {
 }
 
 const RESEND_TEST_FROM = 'Memora <onboarding@resend.dev>';
+const CUSTOM_FROM_DEFAULT = 'Memora <noreply@memora.cards>';
+const SENDING_DOMAIN = 'memora.cards';
 
 function normalizeEnvValue(value) {
   let v = (value ?? '').trim();
@@ -22,17 +24,100 @@ function resendApiKey() {
   return normalizeEnvValue(process.env.RESEND_API_KEY);
 }
 
-function fromAddress() {
+function configuredFromAddress() {
   const configured = normalizeEnvValue(process.env.EMAIL_FROM);
-  if (!configured) return RESEND_TEST_FROM;
+  if (!configured) return null;
   if (configured.includes('@') && !configured.includes('<')) {
     return `Memora <${configured}>`;
   }
   return configured;
 }
 
+function fromAddress() {
+  return configuredFromAddress() || RESEND_TEST_FROM;
+}
+
 function isTestSender(from) {
   return /onboarding@resend\.dev/i.test(from || '');
+}
+
+function isCustomDomainSender(from) {
+  return /memora\.cards/i.test(from || '');
+}
+
+/** @type {boolean | null} */
+let domainVerifiedCache = null;
+/** @type {Promise<boolean> | null} */
+let domainCheckPromise = null;
+
+function resetDomainCacheForTests() {
+  domainVerifiedCache = null;
+  domainCheckPromise = null;
+}
+
+async function fetchResendDomainVerified() {
+  const key = resendApiKey();
+  if (!key) {
+    domainVerifiedCache = false;
+    return false;
+  }
+
+  try {
+    const res = await fetch('https://api.resend.com/domains', {
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'User-Agent': 'memora/1.0',
+      },
+    });
+    if (!res.ok) {
+      console.warn('[email] Resend domains list failed:', res.status);
+      domainVerifiedCache = false;
+      return false;
+    }
+    const payload = await res.json();
+    const domain = (payload.data || []).find(
+      (row) => String(row.name || '').toLowerCase() === SENDING_DOMAIN
+    );
+    const verified = domain?.status === 'verified';
+    domainVerifiedCache = verified;
+    if (domain && !verified) {
+      console.warn(`[email] ${SENDING_DOMAIN} status in Resend: ${domain.status}`);
+    }
+    return verified;
+  } catch (err) {
+    console.warn('[email] Resend domain check error:', err.message);
+    domainVerifiedCache = false;
+    return false;
+  }
+}
+
+async function isResendDomainVerified() {
+  if (domainVerifiedCache !== null) return domainVerifiedCache;
+  if (!domainCheckPromise) {
+    domainCheckPromise = fetchResendDomainVerified().finally(() => {
+      domainCheckPromise = null;
+    });
+  }
+  return domainCheckPromise;
+}
+
+async function resolveFromAddress() {
+  const configured = configuredFromAddress();
+  const domainVerified = await isResendDomainVerified();
+
+  if (domainVerified) {
+    if (configured && isCustomDomainSender(configured)) return configured;
+    return CUSTOM_FROM_DEFAULT;
+  }
+
+  if (configured && isTestSender(configured)) return configured;
+  if (configured && isCustomDomainSender(configured)) {
+    console.warn(
+      `[email] ${SENDING_DOMAIN} is not verified in Resend — using ${RESEND_TEST_FROM}`
+    );
+    return RESEND_TEST_FROM;
+  }
+  return configured || RESEND_TEST_FROM;
 }
 
 function formatResendError(text) {
@@ -83,34 +168,19 @@ async function sendWithResend({ to, subject, html, replyTo }) {
     return { ok: false, skipped: true };
   }
 
-  const primaryFrom = fromAddress();
+  const from = await resolveFromAddress();
   const payload = {
-    from: primaryFrom,
+    from,
     to: [to],
     subject,
     html,
     ...(replyTo ? { reply_to: [replyTo] } : {}),
   };
 
-  let result = await postResendEmail(key, payload);
-
-  if (!result.ok && isDomainVerificationError(result) && !isTestSender(primaryFrom)) {
-    console.warn(
-      `[email] Domain rejection for "${primaryFrom}" — retrying with ${RESEND_TEST_FROM}`
-    );
-    result = await postResendEmail(key, { ...payload, from: RESEND_TEST_FROM });
-    if (result.ok) {
-      result.usedTestSenderFallback = true;
-    }
-  }
+  const result = await postResendEmail(key, payload);
 
   if (!result.ok) {
-    console.error(
-      '[email] Resend error:',
-      result.status,
-      result.error,
-      `(from: ${result.from || primaryFrom})`
-    );
+    console.error('[email] Resend error:', result.status, result.error, `(from: ${from})`);
     if (isTestModeRecipientError(result)) {
       result.testModeLimited = true;
     }
@@ -184,16 +254,14 @@ function emailSendFailureMessage(emailResult) {
 
   if (emailResult.testModeLimited || isTestModeRecipientError(emailResult)) {
     return (
-      'Resend test mode only delivers to the email on your Resend account. ' +
-      'Sign up with that address, or verify memora.cards in Resend to email anyone.'
+      'Could not send verification email using the test sender. ' +
+      'Verify memora.cards in Resend (Domains), set EMAIL_FROM to Memora <noreply@memora.cards>, and redeploy.'
     );
   }
 
   if (isDomainVerificationError(emailResult)) {
     return (
-      'Resend rejected the sender domain. Set EMAIL_FROM to Memora <onboarding@resend.dev> ' +
-      'on Vercel and redeploy, or verify memora.cards in Resend. ' +
-      `(Resend: ${msg})`
+      `Could not send from memora.cards — finish domain verification in Resend. (Resend: ${msg})`
     );
   }
 
@@ -204,6 +272,9 @@ module.exports = {
   appUrl,
   isEmailConfigured,
   fromAddress,
+  resolveFromAddress,
+  isResendDomainVerified,
+  resetDomainCacheForTests,
   isTestSender,
   formatResendError,
   emailSendFailureMessage,
