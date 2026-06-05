@@ -6,14 +6,17 @@ import {
   PUBLIC_HEADER_GUEST_CTAS,
   PUBLIC_HEADER_LINKS,
 } from '../config/publicNav';
+import { getMarketingHomePath } from '../utils/appHome';
 import Logo from './Logo';
 import PublicNavDropdown from './PublicNavDropdown';
 import PublicUserMenu from './PublicUserMenu';
 import ThemeToggle from './ThemeToggle';
 
-function HeaderLink({ to, label, onNavigate, className = '' }) {
+function HeaderLink({ to, label, onNavigate, className = '', isMarketingHome = false }) {
   const location = useLocation();
-  const active = location.pathname === to;
+  const active = isMarketingHome
+    ? location.pathname === '/' || location.pathname === '/home'
+    : location.pathname === to;
   return (
     <Link
       to={to}
@@ -84,9 +87,18 @@ export default function PublicNav() {
           className="public-nav-desktop hidden flex-wrap items-center justify-end gap-2 lg:flex lg:gap-3"
           aria-label="Main"
         >
-          {PUBLIC_HEADER_LINKS.map((link) => (
-            <HeaderLink key={link.to} to={link.to} label={link.label} />
-          ))}
+          {PUBLIC_HEADER_LINKS.map((link) =>
+            link.marketingHome ? (
+              <HeaderLink
+                key="home"
+                to={getMarketingHomePath(user)}
+                label={link.label}
+                isMarketingHome
+              />
+            ) : (
+              <HeaderLink key={link.to} to={link.to} label={link.label} />
+            )
+          )}
           {PUBLIC_HEADER_DROPDOWNS.map((group) => (
             <PublicNavDropdown key={group.id} label={group.label} items={group.items} />
           ))}
@@ -171,7 +183,15 @@ export default function PublicNav() {
             <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Mobile">
               <div className="space-y-1">
                 {PUBLIC_HEADER_LINKS.map((link) => (
-                  <MobileNavLink key={link.to} item={link} onNavigate={closeMobile} />
+                  <MobileNavLink
+                    key={link.marketingHome ? 'home' : link.to}
+                    item={
+                      link.marketingHome
+                        ? { label: link.label, to: getMarketingHomePath(user) }
+                        : link
+                    }
+                    onNavigate={closeMobile}
+                  />
                 ))}
               </div>
 
