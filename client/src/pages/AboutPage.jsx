@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { COMPANY_LEGAL_NAME } from '../config/publicNav';
 import PublicPageLayout from '../components/PublicPageLayout';
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
@@ -8,7 +9,7 @@ export default function AboutPage() {
     <PublicPageLayout>
       <PageHeader
         title="About Memora"
-        subtitle="A study app built for learners, instructors, and teams who want structured practice with real progress tracking."
+        subtitle={`A study app built for learners, instructors, and teams — operated by ${COMPANY_LEGAL_NAME}.`}
       />
 
       <div className="space-y-6">

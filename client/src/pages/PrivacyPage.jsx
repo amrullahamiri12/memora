@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { COMPANY_LEGAL_NAME } from '../config/publicNav';
 import PublicPageLayout from '../components/PublicPageLayout';
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
@@ -25,9 +26,9 @@ export default function PrivacyPage() {
       <div className="space-y-6">
         <PolicySection title="Overview">
           <p>
-            Memora (&quot;we&quot;, &quot;us&quot;) operates memora.cards, a web application for
-            flashcard study and progress tracking. This policy describes what we collect and how we
-            use it.
+            {COMPANY_LEGAL_NAME} (&quot;we&quot;, &quot;us&quot;) operates Memora at memora.cards, a
+            web application for flashcard study and progress tracking. This policy describes what we
+            collect and how we use it.
           </p>
         </PolicySection>
 

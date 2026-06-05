@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { COMPANY_LEGAL_NAME } from '../config/publicNav';
 import PublicPageLayout from '../components/PublicPageLayout';
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
@@ -23,10 +24,16 @@ export default function TermsPage() {
       />
 
       <div className="space-y-6">
+        <TermsSection title="Agreement">
+          <p>
+            These terms are between you and {COMPANY_LEGAL_NAME}. Memora at memora.cards is operated
+            by {COMPANY_LEGAL_NAME} for personal and organizational study.
+          </p>
+        </TermsSection>
+
         <TermsSection title="Using Memora">
           <p>
-            Memora is provided at memora.cards for personal and organizational study. You must
-            provide accurate account information and keep your credentials secure.
+            You must provide accurate account information and keep your credentials secure.
           </p>
         </TermsSection>
 
