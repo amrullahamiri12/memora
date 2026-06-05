@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { api } from '../utils/api';
 import Input from './ui/Input';
 import Button from './ui/Button';
@@ -9,11 +10,11 @@ import Card from './ui/Card';
 
 export default function ChangePassword() {
   const { user } = useAuth();
+  const toast = useToast();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
 
   if (user?.hasPassword === false) {
@@ -37,7 +38,6 @@ export default function ChangePassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
     if (newPassword.length < 8) {
       setError('New password must be at least 8 characters');
@@ -54,7 +54,7 @@ export default function ChangePassword() {
         method: 'POST',
         body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
       });
-      setSuccess('Password updated successfully');
+      toast.success('Password updated successfully');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -70,7 +70,6 @@ export default function ChangePassword() {
       <h2 className="mb-4 text-lg font-semibold">Change Password</h2>
 
       {error && <Alert>{error}</Alert>}
-      {success && <Alert type="success">{success}</Alert>}
 
       <form onSubmit={handleSubmit} className="max-w-md space-y-4">
         <Input

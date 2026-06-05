@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
+import ScrollToTop from './components/ScrollToTop';
 import { ProtectedRoute, StudentViewRoute, AdminRoute, GuestRoute } from './components/ProtectedRoute';
 import { useStudentPreview } from './hooks/useStudentPreview';
 import { isStaff } from './utils/roles';
@@ -248,12 +250,15 @@ function AppRoutes() {
 export default function App() {
   const inner = (
     <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <SeoManager />
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <SeoManager />
+            <ScrollToTop />
+            <AppRoutes />
+          </BrowserRouter>
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 

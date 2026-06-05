@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import PageHeader from '../components/ui/PageHeader';
 import ProgressBar from '../components/ProgressBar';
-import Spinner from '../components/ui/Spinner';
+import Skeleton, { PageHeaderSkeleton, ListSkeleton } from '../components/ui/Skeleton';
 import Alert from '../components/ui/Alert';
 import StatCard from '../components/ui/StatCard';
 import Card from '../components/ui/Card';
@@ -34,7 +34,13 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <Layout>
-        <Spinner />
+        <PageHeaderSkeleton />
+        <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+        <ListSkeleton rows={4} />
       </Layout>
     );
   }

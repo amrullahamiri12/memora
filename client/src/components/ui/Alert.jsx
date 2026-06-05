@@ -6,6 +6,12 @@ export default function Alert({ type = 'error', children }) {
   };
 
   return (
-    <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${styles[type]}`}>{children}</div>
+    <div
+      role={type === 'error' ? 'alert' : 'status'}
+      aria-live={type === 'error' ? 'assertive' : 'polite'}
+      className={`mb-4 rounded-xl border px-4 py-3 text-sm ${styles[type]}`}
+    >
+      {children}
+    </div>
   );
 }

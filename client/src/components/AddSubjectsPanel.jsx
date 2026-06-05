@@ -5,6 +5,7 @@ import Button from './ui/Button';
 import Alert from './ui/Alert';
 import SubjectPicker from './SubjectPicker';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { api } from '../utils/api';
 import { isGuestUser } from '../utils/guest';
 import {
@@ -38,6 +39,7 @@ export default function AddSubjectsPanel({
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(defaultExpanded);
   const { user } = useAuth();
+  const toast = useToast();
   const limitApplies = enrollmentLimitApplies(user);
 
   const enrolledIds = useMemo(
@@ -86,9 +88,13 @@ export default function AddSubjectsPanel({
         method: 'POST',
         body: JSON.stringify({ subjectIds: selectedIds }),
       });
+      const addedCount = selectedIds.length;
       setSelectedIds([]);
       setExpanded(false);
       onEnrolled(data.subjects);
+      toast.success(
+        data.message || `Added ${addedCount} subject${addedCount === 1 ? '' : 's'}`
+      );
     } catch (err) {
       setError(err.message);
     } finally {

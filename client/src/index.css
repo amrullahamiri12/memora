@@ -196,6 +196,21 @@ h1, h2, h3, h4 {
   }
 }
 
+.toast-item {
+  animation: toastIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .landing-stagger-1,
 .landing-stagger-2,
 .landing-stagger-3,
@@ -311,6 +326,10 @@ h1, h2, h3, h4 {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .toast-item {
+    animation: none;
   }
 
   .landing-stagger-1,

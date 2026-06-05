@@ -3,8 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import PageHeader from '../components/ui/PageHeader';
 import ProgressBar from '../components/ProgressBar';
-import Spinner from '../components/ui/Spinner';
-import Alert from '../components/ui/Alert';
+import { PageHeaderSkeleton, CardGridSkeleton } from '../components/ui/Skeleton';
 import Card from '../components/ui/Card';
 import EmptyState from '../components/ui/EmptyState';
 import Pagination from '../components/ui/Pagination';
@@ -23,6 +22,7 @@ export default function SubjectPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     setPage(1);
@@ -30,6 +30,7 @@ export default function SubjectPage() {
 
   useEffect(() => {
     setLoading(true);
+    setError('');
     api(`/subjects/${id}/topics?page=${page}&limit=${TOPICS_PAGE_SIZE}`)
       .then((data) => {
         setSubject({ id: data.id, name: data.name, topics: data.topics });
@@ -37,12 +38,13 @@ export default function SubjectPage() {
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [id, page]);
+  }, [id, page, reloadKey]);
 
   if (loading) {
     return (
       <Layout>
-        <Spinner />
+        <PageHeaderSkeleton />
+        <CardGridSkeleton count={6} className="sm:grid-cols-2 lg:grid-cols-2" />
       </Layout>
     );
   }
@@ -50,7 +52,13 @@ export default function SubjectPage() {
   if (error) {
     return (
       <Layout>
-        <Alert>{error}</Alert>
+        <EmptyState
+          icon="⚠️"
+          title="Couldn't load this subject"
+          message={error}
+          actionLabel="Try again"
+          onAction={() => setReloadKey((k) => k + 1)}
+        />
       </Layout>
     );
   }

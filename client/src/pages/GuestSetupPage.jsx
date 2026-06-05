@@ -6,15 +6,18 @@ import SubjectPicker from '../components/SubjectPicker';
 import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
 import Card from '../components/ui/Card';
-import Spinner from '../components/ui/Spinner';
+import EmptyState from '../components/ui/EmptyState';
+import { CardGridSkeleton } from '../components/ui/Skeleton';
 import GuestBanner from '../components/GuestBanner';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { api } from '../utils/api';
 import { MAX_ACTIVE_SUBJECTS_GUEST, GUEST_UPSELL_HINT } from '../utils/enrollmentQuota';
 import { isGuestUser } from '../utils/guest';
 
 export default function GuestSetupPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [catalog, setCatalog] = useState([]);
@@ -22,6 +25,7 @@ export default function GuestSetupPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (user && !isGuestUser(user)) {
@@ -64,7 +68,7 @@ export default function GuestSetupPage() {
     return () => {
       cancelled = true;
     };
-  }, [user, navigate, searchParams]);
+  }, [user, navigate, searchParams, reloadKey]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,6 +83,9 @@ export default function GuestSetupPage() {
         method: 'POST',
         body: JSON.stringify({ subjectIds }),
       });
+      toast.success(
+        `Added ${subjectIds.length} subject${subjectIds.length === 1 ? '' : 's'} — let's practice!`
+      );
       navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.message);
@@ -98,13 +105,22 @@ export default function GuestSetupPage() {
       {error && <Alert>{error}</Alert>}
 
       {loading ? (
-        <Spinner />
+        <CardGridSkeleton count={6} />
+      ) : error && catalog.length === 0 ? (
+        <EmptyState
+          icon="⚠️"
+          title="Couldn't load subjects"
+          message="Something went wrong while loading. Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => setReloadKey((k) => k + 1)}
+        />
       ) : catalog.length === 0 ? (
-        <Card className="py-12 text-center">
-          <p className="text-[var(--text-muted)]">
-            No subjects are available yet. Please try again later.
-          </p>
-        </Card>
+        <EmptyState
+          title="No subjects available yet"
+          message="There aren't any subjects to practice right now. Please check back a little later."
+          actionLabel="Refresh"
+          onAction={() => setReloadKey((k) => k + 1)}
+        />
       ) : (
         <Card className="p-6">
           <form onSubmit={handleSubmit}>
