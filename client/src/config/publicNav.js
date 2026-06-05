@@ -9,10 +9,35 @@ export const PUBLIC_HEADER_LINKS = [
   { label: 'Contact', to: '/contact' },
 ];
 
-/** Footer Company column — all public info pages. */
-export const COMPANY_FOOTER_LINKS = [
-  { label: 'About', to: '/about' },
-  { label: 'Contact', to: '/contact' },
-  { label: 'Privacy', to: '/privacy' },
-  { label: 'Terms', to: '/terms' },
+/** Footer link columns (title + links). */
+export const FOOTER_NAV_SECTIONS = [
+  {
+    title: 'Get started',
+    links: [
+      { label: 'Create account', to: '/register' },
+      { label: 'Sign in', to: '/login' },
+      { label: 'Reset password', to: '/forgot-password' },
+    ],
+  },
+  {
+    title: 'Company',
+    links: [
+      { label: 'About', to: '/about' },
+      { label: 'Contact', to: '/contact' },
+    ],
+  },
+  {
+    title: 'Legal',
+    links: [
+      { label: 'Privacy', to: '/privacy' },
+      { label: 'Terms', to: '/terms' },
+    ],
+  },
+  {
+    title: 'Developers',
+    links: [
+      { label: 'API documentation', href: '/api-docs.html' },
+      { label: 'OpenAPI spec', href: '/openapi.yaml', download: true },
+    ],
+  },
 ];

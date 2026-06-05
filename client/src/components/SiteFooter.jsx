@@ -1,31 +1,13 @@
 import { Link } from 'react-router-dom';
 import {
-  COMPANY_FOOTER_LINKS,
   COMPANY_LEGAL_NAME,
+  FOOTER_NAV_SECTIONS,
   MEMORA_SLOGAN,
 } from '../config/publicNav';
 
-const FOOTER_NAV = [
-  {
-    ariaLabel: 'Account',
-    links: [
-      { label: 'Get started', to: '/register' },
-      { label: 'Sign in', to: '/login' },
-      { label: 'Reset password', to: '/forgot-password' },
-    ],
-  },
-  {
-    ariaLabel: 'Company',
-    links: COMPANY_FOOTER_LINKS,
-  },
-  {
-    ariaLabel: 'Developers',
-    links: [
-      { label: 'API docs', href: '/api-docs.html' },
-      { label: 'OpenAPI', href: '/openapi.yaml', download: true },
-    ],
-  },
-];
+function footerSectionId(title) {
+  return `footer-${title.toLowerCase().replace(/\s+/g, '-')}`;
+}
 
 function FooterLink({ link }) {
   const className =
@@ -57,7 +39,7 @@ export default function SiteFooter() {
   return (
     <footer className="relative z-10 border-t border-[var(--border)]">
       <div className="mx-auto max-w-6xl px-4 py-10">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
           <div className="sm:col-span-2 lg:col-span-1">
             <p className="font-display text-lg font-bold text-[var(--text-heading)]">Memora</p>
             <p className="mt-2 max-w-xs text-sm leading-relaxed text-[var(--text-muted)]">
@@ -65,17 +47,27 @@ export default function SiteFooter() {
             </p>
           </div>
 
-          {FOOTER_NAV.map((section) => (
-            <nav key={section.ariaLabel} aria-label={section.ariaLabel}>
-              <ul className="space-y-2">
-                {section.links.map((link) => (
-                  <li key={link.label}>
-                    <FooterLink link={link} />
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          ))}
+          {FOOTER_NAV_SECTIONS.map((section) => {
+            const headingId = footerSectionId(section.title);
+
+            return (
+              <nav key={section.title} aria-labelledby={headingId}>
+                <h2
+                  id={headingId}
+                  className="text-xs font-semibold uppercase tracking-wider text-[var(--text-label)]"
+                >
+                  {section.title}
+                </h2>
+                <ul className="mt-3 space-y-2">
+                  {section.links.map((link) => (
+                    <li key={link.label}>
+                      <FooterLink link={link} />
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            );
+          })}
         </div>
 
         <p className="mt-10 border-t border-[var(--border)] pt-6 text-sm text-[var(--text-muted)]">
