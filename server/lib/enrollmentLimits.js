@@ -1,13 +1,8 @@
 const db = require('./pg');
 const { isGuestEmail } = require('./guestIdentity');
-const { getEnrolledSubjectIds } = require('./userSubjects');
-const { getSubjectsWithProgress } = require('./subjectProgress');
 
 const MAX_ACTIVE_SUBJECTS_GUEST = 3;
 const MAX_ACTIVE_SUBJECTS_REGISTERED = 5;
-
-/** @deprecated use getMaxActiveSubjects */
-const MAX_ACTIVE_SUBJECTS = MAX_ACTIVE_SUBJECTS_GUEST;
 
 const GUEST_AT_LIMIT_MESSAGE =
   'You already have 3 active subjects. Sign up for a free account to practice more subjects.';
@@ -74,6 +69,8 @@ function quotaForUser(subjectsWithProgress, userOrEmail) {
 }
 
 async function getEnrollmentQuota(userOrId) {
+  const { getEnrolledSubjectIds } = require('./userSubjects');
+  const { getSubjectsWithProgress } = require('./subjectProgress');
   const email = await resolveUserEmail(userOrId);
   const userId = typeof userOrId === 'object' ? userOrId.id : userOrId;
   const enrolledIds = await getEnrolledSubjectIds(userId);
@@ -104,6 +101,8 @@ function createLimitError(spotsRemaining, requested, userOrEmail) {
 }
 
 async function assertCanEnrollSubjects(userOrId, subjectIds) {
+  const { getEnrolledSubjectIds } = require('./userSubjects');
+  const { getSubjectsWithProgress } = require('./subjectProgress');
   const email = await resolveUserEmail(userOrId);
   const userId = typeof userOrId === 'object' ? userOrId.id : userOrId;
   const unique = [...new Set(subjectIds.filter((id) => typeof id === 'string' && id.trim()))];
@@ -128,7 +127,6 @@ async function assertCanEnrollSubjects(userOrId, subjectIds) {
 }
 
 module.exports = {
-  MAX_ACTIVE_SUBJECTS,
   MAX_ACTIVE_SUBJECTS_GUEST,
   MAX_ACTIVE_SUBJECTS_REGISTERED,
   GUEST_AT_LIMIT_MESSAGE,
