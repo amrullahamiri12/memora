@@ -5,10 +5,34 @@ function appUrl() {
   );
 }
 
+const RESEND_TEST_FROM = 'Memora <onboarding@resend.dev>';
+
+function normalizeEnvValue(value) {
+  let v = (value ?? '').trim();
+  if (
+    (v.startsWith('"') && v.endsWith('"')) ||
+    (v.startsWith("'") && v.endsWith("'"))
+  ) {
+    v = v.slice(1, -1).trim();
+  }
+  return v;
+}
+
+function resendApiKey() {
+  return normalizeEnvValue(process.env.RESEND_API_KEY);
+}
+
 function fromAddress() {
-  const configured = process.env.EMAIL_FROM?.trim();
-  if (configured) return configured;
-  return 'Memora <onboarding@resend.dev>';
+  const configured = normalizeEnvValue(process.env.EMAIL_FROM);
+  if (!configured) return RESEND_TEST_FROM;
+  if (configured.includes('@') && !configured.includes('<')) {
+    return `Memora <${configured}>`;
+  }
+  return configured;
+}
+
+function isTestSender(from) {
+  return /onboarding@resend\.dev/i.test(from || '');
 }
 
 function formatResendError(text) {
@@ -21,34 +45,81 @@ function formatResendError(text) {
   }
 }
 
-async function sendEmail({ to, subject, html }) {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) {
-    console.warn('[email] RESEND_API_KEY not set — email not sent:', subject, '→', to);
-    return { ok: false, skipped: true };
-  }
+function isDomainVerificationError(result) {
+  return (
+    result?.status === 403 && /domain|verify|not verified/i.test(result.error || '')
+  );
+}
 
+function isTestModeRecipientError(result) {
+  return /only send.*your own email|testing emails|not allowed to send/i.test(
+    result?.error || ''
+  );
+}
+
+async function postResendEmail(key, payload) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
+      'User-Agent': 'memora/1.0',
     },
-    body: JSON.stringify({
-      from: fromAddress(),
-      to: [to],
-      subject,
-      html,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
     const text = await res.text();
     const message = formatResendError(text);
-    console.error('[email] Resend error:', res.status, message);
-    return { ok: false, status: res.status, error: message };
+    return { ok: false, status: res.status, error: message, from: payload.from };
   }
-  return { ok: true };
+  return { ok: true, from: payload.from };
+}
+
+async function sendWithResend({ to, subject, html, replyTo }) {
+  const key = resendApiKey();
+  if (!key) {
+    console.warn('[email] RESEND_API_KEY not set — email not sent:', subject, '→', to);
+    return { ok: false, skipped: true };
+  }
+
+  const primaryFrom = fromAddress();
+  const payload = {
+    from: primaryFrom,
+    to: [to],
+    subject,
+    html,
+    ...(replyTo ? { reply_to: [replyTo] } : {}),
+  };
+
+  let result = await postResendEmail(key, payload);
+
+  if (!result.ok && isDomainVerificationError(result) && !isTestSender(primaryFrom)) {
+    console.warn(
+      `[email] Domain rejection for "${primaryFrom}" — retrying with ${RESEND_TEST_FROM}`
+    );
+    result = await postResendEmail(key, { ...payload, from: RESEND_TEST_FROM });
+    if (result.ok) {
+      result.usedTestSenderFallback = true;
+    }
+  }
+
+  if (!result.ok) {
+    console.error(
+      '[email] Resend error:',
+      result.status,
+      result.error,
+      `(from: ${result.from || primaryFrom})`
+    );
+    if (isTestModeRecipientError(result)) {
+      result.testModeLimited = true;
+    }
+  }
+  return result;
+}
+
+async function sendEmail({ to, subject, html }) {
+  return sendWithResend({ to, subject, html });
 }
 
 async function sendVerificationEmail(to, token) {
@@ -80,7 +151,7 @@ function escapeHtml(text) {
 }
 
 async function sendContactEmail({ name, email, message }) {
-  const to = process.env.CONTACT_EMAIL?.trim();
+  const to = normalizeEnvValue(process.env.CONTACT_EMAIL);
   if (!to) {
     return { ok: false, skipped: true, reason: 'contact_not_configured' };
   }
@@ -93,55 +164,47 @@ async function sendContactEmail({ name, email, message }) {
     <p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>
   `;
 
-  const key = process.env.RESEND_API_KEY;
-  if (!key) {
-    return { ok: false, skipped: true, reason: 'email_not_configured' };
-  }
-
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: fromAddress(),
-      to: [to],
-      reply_to: [email],
-      subject: `Memora contact: ${name}`.slice(0, 120),
-      html,
-    }),
+  return sendWithResend({
+    to,
+    subject: `Memora contact: ${name}`.slice(0, 120),
+    html,
+    replyTo: email,
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    const errMsg = formatResendError(text);
-    console.error('[email] Contact Resend error:', res.status, errMsg);
-    return { ok: false, status: res.status, error: errMsg };
-  }
-  return { ok: true };
 }
 
 function isEmailConfigured() {
-  return Boolean(process.env.RESEND_API_KEY);
+  return Boolean(resendApiKey());
 }
 
 function emailSendFailureMessage(emailResult) {
   if (!emailResult) return 'Could not send email. Try again later.';
   if (emailResult.skipped) return 'Email delivery is not configured on the server';
+
   const msg = emailResult.error || '';
-  if (emailResult.status === 403 && /domain|verify|not verified/i.test(msg)) {
-    return 'Email domain is not verified in Resend yet. Use onboarding@resend.dev or verify memora.cards in Resend.';
+
+  if (emailResult.testModeLimited || isTestModeRecipientError(emailResult)) {
+    return (
+      'Resend test mode only delivers to the email on your Resend account. ' +
+      'Sign up with that address, or verify memora.cards in Resend to email anyone.'
+    );
   }
-  if (/only send.*your own email|testing emails/i.test(msg)) {
-    return 'Resend test mode: add and verify memora.cards in Resend, or send to your Resend account email only.';
+
+  if (isDomainVerificationError(emailResult)) {
+    return (
+      'Resend rejected the sender domain. Set EMAIL_FROM to Memora <onboarding@resend.dev> ' +
+      'on Vercel and redeploy, or verify memora.cards in Resend. ' +
+      `(Resend: ${msg})`
+    );
   }
+
   return msg || 'Could not send email. Try again later.';
 }
 
 module.exports = {
   appUrl,
   isEmailConfigured,
+  fromAddress,
+  isTestSender,
   formatResendError,
   emailSendFailureMessage,
   sendVerificationEmail,
