@@ -22,6 +22,79 @@ function filterByQuestionTypes(cards, types) {
   return cards.filter((c) => types.includes(c.questionType));
 }
 
+const MASTERY_REPEAT_FRACTION = 0.3;
+
+function isEligibleForRepeat(card, progressByCardId) {
+  const progress = progressByCardId.get(card.id);
+  if (!progress) return true;
+  return progress.status === 'NEEDS_PRACTICE';
+}
+
+function pickCardsToRepeat(ordered, progressByCardId, repeatCount) {
+  const weak = [];
+  const unseen = [];
+
+  for (const card of ordered) {
+    const progress = progressByCardId.get(card.id);
+    if (!progress) unseen.push(card);
+    else if (progress.status === 'NEEDS_PRACTICE') weak.push(card);
+  }
+
+  const pool = [...shuffleArray(weak), ...shuffleArray(unseen)];
+  const seen = new Set();
+  const picked = [];
+
+  for (const card of pool) {
+    if (picked.length >= repeatCount) break;
+    if (seen.has(card.id)) continue;
+    seen.add(card.id);
+    picked.push(card);
+  }
+
+  return picked;
+}
+
+/**
+ * Re-present ~30% of cards once more, spaced through the session (not clustered at the end).
+ * Skipped for test mode and very small decks.
+ */
+function injectMasteryRepeats(
+  ordered,
+  progressByCardId,
+  { fraction = MASTERY_REPEAT_FRACTION, enabled = true } = {}
+) {
+  if (!enabled || ordered.length < 2) return ordered;
+
+  const eligibleCount = ordered.filter((c) => isEligibleForRepeat(c, progressByCardId)).length;
+  if (eligibleCount === 0) return ordered;
+
+  const repeatCount = Math.min(
+    eligibleCount,
+    ordered.length - 1,
+    Math.max(ordered.length >= 3 ? 1 : 0, Math.round(ordered.length * fraction))
+  );
+  if (repeatCount === 0) return ordered;
+
+  const toRepeat = pickCardsToRepeat(ordered, progressByCardId, repeatCount);
+  if (toRepeat.length === 0) return ordered;
+
+  const result = [...ordered];
+  const segmentSize = ordered.length / (toRepeat.length + 1);
+
+  const insertions = toRepeat
+    .map((card, i) => ({
+      card,
+      index: Math.min(ordered.length - 1, Math.max(1, Math.floor((i + 1) * segmentSize))),
+    }))
+    .sort((a, b) => b.index - a.index);
+
+  for (const { card, index } of insertions) {
+    result.splice(index, 0, card);
+  }
+
+  return result;
+}
+
 function orderCardsForStudy(cards, progressByCardId, { weakFirst = true, shuffle = true }) {
   const weak = [];
   const strong = [];
@@ -53,8 +126,10 @@ function orderCardsForStudy(cards, progressByCardId, { weakFirst = true, shuffle
 }
 
 module.exports = {
+  MASTERY_REPEAT_FRACTION,
   shuffleArray,
   parseQuestionTypes,
   filterByQuestionTypes,
   orderCardsForStudy,
+  injectMasteryRepeats,
 };

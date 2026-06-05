@@ -525,6 +525,7 @@ async function topicFlashcards(user, topicId, query, learnerView = false) {
     parseQuestionTypes,
     filterByQuestionTypes,
     orderCardsForStudy,
+    injectMasteryRepeats,
   } = require('./studySession');
   const { getMaxStudyCards } = require('./config');
 
@@ -587,6 +588,10 @@ async function topicFlashcards(user, topicId, query, learnerView = false) {
   cards = orderCardsForStudy(cards, progressByCardId, {
     weakFirst: mode !== 'test',
     shuffle,
+  });
+
+  cards = injectMasteryRepeats(cards, progressByCardId, {
+    enabled: mode !== 'test',
   });
 
   let flashcards;

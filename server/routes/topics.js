@@ -5,6 +5,7 @@ const {
   parseQuestionTypes,
   filterByQuestionTypes,
   orderCardsForStudy,
+  injectMasteryRepeats,
 } = require('../lib/studySession');
 const authMiddleware = require('../middleware/auth');
 const { assertSubjectAccess } = require('../lib/userSubjects');
@@ -72,6 +73,10 @@ router.get('/:id/flashcards', async (req, res) => {
     cards = orderCardsForStudy(cards, progressByCardId, {
       weakFirst: mode !== 'test',
       shuffle,
+    });
+
+    cards = injectMasteryRepeats(cards, progressByCardId, {
+      enabled: mode !== 'test',
     });
 
     let flashcards;
