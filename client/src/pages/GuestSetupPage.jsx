@@ -9,6 +9,7 @@ import Card from '../components/ui/Card';
 import Spinner from '../components/ui/Spinner';
 import GuestBanner from '../components/GuestBanner';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../utils/api';
 import { MAX_ACTIVE_SUBJECTS_GUEST, GUEST_UPSELL_HINT } from '../utils/enrollmentQuota';
 import { isGuestUser } from '../utils/guest';
 
