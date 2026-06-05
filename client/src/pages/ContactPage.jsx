@@ -43,64 +43,82 @@ export default function ContactPage() {
       />
 
       <div className="mx-auto max-w-xl">
-        {error && (
-          <div className="mb-6">
-            <Alert>{error}</Alert>
-          </div>
-        )}
-        {success && (
-          <div className="mb-6">
+        {success ? (
+          <Card className="p-6 text-center sm:p-10">
             <Alert type="success">{success}</Alert>
-          </div>
-        )}
-
-        <Card className="p-6 sm:p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <Input
-              label="Name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-              autoComplete="name"
-            />
-            <Input
-              label="Email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-              autoComplete="email"
-            />
-            <Textarea
-              label="Message"
-              value={form.message}
-              onChange={(e) => setForm({ ...form, message: e.target.value })}
-              required
-              rows={6}
-              placeholder="How can we help?"
-            />
-            {/* Honeypot — hidden from users, bots often fill it */}
-            <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden>
-              <label htmlFor="contact-company">Company</label>
-              <input
-                id="contact-company"
-                type="text"
-                name="company"
-                tabIndex={-1}
-                autoComplete="off"
-                value={form.company}
-                onChange={(e) => setForm({ ...form, company: e.target.value })}
-              />
-            </div>
-            <Button type="submit" loading={loading} className="w-full sm:w-auto">
-              Send message
+            <p className="mt-4 text-sm text-[var(--text-muted)]">
+              We typically reply within a few business days.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              className="mt-6"
+              onClick={() => {
+                setSuccess('');
+                setError('');
+                setForm(emptyForm);
+              }}
+            >
+              Send another message
             </Button>
-          </form>
-        </Card>
+          </Card>
+        ) : (
+          <>
+            {error && (
+              <div className="mb-6">
+                <Alert>{error}</Alert>
+              </div>
+            )}
 
-        <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
-          We typically reply within a few business days.
-        </p>
+            <Card className="p-6 sm:p-8">
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <Input
+                  label="Name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                  autoComplete="name"
+                />
+                <Input
+                  label="Email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                  autoComplete="email"
+                />
+                <Textarea
+                  label="Message"
+                  value={form.message}
+                  onChange={(e) => setForm({ ...form, message: e.target.value })}
+                  required
+                  rows={6}
+                  placeholder="How can we help?"
+                />
+                {/* Honeypot — hidden from users, bots often fill it */}
+                <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden>
+                  <label htmlFor="contact-company">Company</label>
+                  <input
+                    id="contact-company"
+                    type="text"
+                    name="company"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={form.company}
+                    onChange={(e) => setForm({ ...form, company: e.target.value })}
+                  />
+                </div>
+                <Button type="submit" loading={loading} className="w-full sm:w-auto">
+                  Send message
+                </Button>
+              </form>
+            </Card>
+
+            <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
+              We typically reply within a few business days.
+            </p>
+          </>
+        )}
       </div>
     </PublicPageLayout>
   );
