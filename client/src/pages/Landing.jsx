@@ -3,6 +3,7 @@ import Logo from '../components/Logo';
 import Button from '../components/ui/Button';
 import ThemeToggle from '../components/ThemeToggle';
 import ContinueAsGuestButton from '../components/ContinueAsGuestButton';
+import SiteFooter from '../components/SiteFooter';
 
 const FEATURES = [
   {
@@ -136,19 +137,7 @@ export default function Landing() {
         </section>
       </main>
 
-      <footer className="relative z-10 border-t border-[var(--border)]">
-        <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-[var(--text-muted)]">
-          <a href="/api-docs.html" className="font-medium text-[var(--accent)] hover:underline sm:hidden">
-            API documentation
-          </a>
-          <p className="mt-2 sm:mt-0">
-            © {new Date().getFullYear()} Memora ·{' '}
-            <a href="https://memora.cards/" className="hover:text-[var(--accent)]">
-              memora.cards
-            </a>
-          </p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
