@@ -8,7 +8,6 @@ import Alert from '../ui/Alert';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import Input from '../ui/Input';
-import Spinner from '../ui/Spinner';
 import { SubjectCardSkeleton } from '../ui/Skeleton';
 
 const STAGGER = [
@@ -81,6 +80,7 @@ export default function SubjectExploreGrid({
   className = '',
   skeletonCount = 3,
   onCatalogLoaded,
+  promptBeforeStart = false,
 }) {
   const { user, continueAsGuest } = useAuth();
   const navigate = useNavigate();
@@ -126,6 +126,11 @@ export default function SubjectExploreGrid({
   }, [catalog, query, limit]);
 
   const handleStart = async (subjectId) => {
+    if (promptBeforeStart && !user) {
+      navigate(`/explore/${subjectId}`);
+      return;
+    }
+
     setStartingId(subjectId);
     setStartError('');
     try {

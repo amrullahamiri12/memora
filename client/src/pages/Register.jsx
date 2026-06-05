@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AuthPanel from '../components/AuthPanel';
 import Input from '../components/ui/Input';
@@ -15,6 +15,8 @@ import GoogleSignInButton from '../components/GoogleSignInButton';
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const subjectParam = (searchParams.get('subject') || '').trim();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,10 +28,15 @@ export default function Register() {
 
   useEffect(() => {
     api('/subjects/catalog')
-      .then(setCatalog)
+      .then((rows) => {
+        setCatalog(rows);
+        if (subjectParam && rows.some((s) => s.id === subjectParam)) {
+          setSubjectIds([subjectParam]);
+        }
+      })
       .catch((err) => setError(err.message))
       .finally(() => setCatalogLoading(false));
-  }, []);
+  }, [subjectParam]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -148,13 +155,16 @@ export default function Register() {
           </form>
 
           <div className="mt-8 space-y-6 border-t border-[var(--border)] pt-8">
-            <GoogleSignInButton />
+            <GoogleSignInButton subjectId={subjectParam || undefined} />
             <ContinueAsGuestButton />
           </div>
 
           <p className="mt-8 text-center text-sm text-[var(--text-muted)]">
             Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-[var(--accent)] hover:underline">
+            <Link
+              to={subjectParam ? `/login?subject=${encodeURIComponent(subjectParam)}` : '/login'}
+              className="font-semibold text-[var(--accent)] hover:underline"
+            >
               Sign in
             </Link>
           </p>

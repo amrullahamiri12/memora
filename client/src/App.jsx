@@ -37,6 +37,7 @@ import ContactPage from './pages/ContactPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import ExplorePage from './pages/ExplorePage';
+import ExploreSubjectStartPage from './pages/ExploreSubjectStartPage';
 import StartSubjectPage from './pages/StartSubjectPage';
 import SeoManager from './components/SeoManager';
 
@@ -79,6 +80,7 @@ function AppRoutes() {
           <Route path="/" element={<Home />} />
           <Route path="/home" element={<Landing />} />
           <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/explore/:subjectId" element={<ExploreSubjectStartPage />} />
           <Route path="/start/:subjectId" element={<StartSubjectPage />} />
           <Route
             path="/login"

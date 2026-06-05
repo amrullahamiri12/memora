@@ -21,7 +21,9 @@ export default function ExplorePage() {
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-[var(--accent)]">2.</span>
-            <span>We&apos;ll open a free guest session — no email or password.</span>
+            <span>
+              Choose how to start — create an account, sign in, or continue as a guest.
+            </span>
           </li>
           <li className="flex gap-2">
             <span className="font-semibold text-[var(--accent)]">3.</span>
@@ -30,7 +32,7 @@ export default function ExplorePage() {
         </ol>
       </Card>
 
-      <SubjectExploreGrid showSearch skeletonCount={6} />
+      <SubjectExploreGrid showSearch skeletonCount={6} promptBeforeStart />
 
       <Card className="mt-10 p-6 text-center sm:p-8">
         <p className="font-medium text-[var(--text-heading)]">Want to pick several subjects first?</p>

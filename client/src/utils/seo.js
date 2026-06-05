@@ -118,6 +118,14 @@ export function getSiteUrl() {
 
 function resolveMeta(pathname) {
   if (ROUTE_META[pathname]) return ROUTE_META[pathname];
+  if (pathname.startsWith('/explore/') && pathname.length > '/explore/'.length) {
+    return {
+      title: 'Start studying — Memora',
+      description:
+        'Choose how to start studying on Memora — create an account, sign in, or continue as a guest.',
+      index: true,
+    };
+  }
   if (NOINDEX_PREFIXES.some((p) => pathname.startsWith(p))) {
     return {
       title: 'Memora',

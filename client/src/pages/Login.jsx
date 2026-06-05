@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isStaff } from '../utils/roles';
 import AuthPanel from '../components/AuthPanel';
@@ -12,10 +12,13 @@ import ContinueAsGuestButton from '../components/ContinueAsGuestButton';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 import { isGuestUser } from '../utils/guest';
 
-function afterAuthPath(user) {
+function afterAuthPath(user, subjectId = null) {
   if (isStaff(user.role)) return '/admin/dashboard';
-  if (isGuestUser(user)) return '/guest/setup';
+  if (isGuestUser(user)) {
+    return subjectId ? `/guest/setup?subjects=${encodeURIComponent(subjectId)}` : '/guest/setup';
+  }
   if (user.emailVerified === false) return '/verify-email';
+  if (subjectId) return `/start/${subjectId}`;
   return '/dashboard';
 }
 
@@ -23,6 +26,8 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const subjectParam = (searchParams.get('subject') || '').trim();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -40,7 +45,7 @@ export default function Login() {
     setLoading(true);
     try {
       const user = await login(email, password);
-      navigate(afterAuthPath(user));
+      navigate(afterAuthPath(user, subjectParam || null));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -92,13 +97,16 @@ export default function Login() {
           </form>
 
           <div className="mt-8 space-y-6 border-t border-[var(--border)] pt-8">
-            <GoogleSignInButton />
+            <GoogleSignInButton subjectId={subjectParam || undefined} />
             <ContinueAsGuestButton />
           </div>
 
           <p className="mt-8 text-center text-sm text-[var(--text-muted)]">
             Don&apos;t have an account?{' '}
-            <Link to="/register" className="font-semibold text-[var(--accent)] hover:underline">
+            <Link
+              to={subjectParam ? `/register?subject=${encodeURIComponent(subjectParam)}` : '/register'}
+              className="font-semibold text-[var(--accent)] hover:underline"
+            >
               Register
             </Link>
           </p>

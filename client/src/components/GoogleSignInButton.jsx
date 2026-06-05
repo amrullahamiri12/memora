@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { isStaff } from '../utils/roles';
 import Alert from './ui/Alert';
 
-export default function GoogleSignInButton({ onSuccess }) {
+export default function GoogleSignInButton({ onSuccess, subjectId = null }) {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
   const { loginWithGoogle, googleSessionNonce } = useAuth();
   const navigate = useNavigate();
@@ -30,7 +30,9 @@ export default function GoogleSignInButton({ onSuccess }) {
       const data = await loginWithGoogle(credentialResponse.credential);
       onSuccess?.(data);
       if (data.needsSubjectSetup) {
-        navigate('/guest/setup');
+        navigate(
+          subjectId ? `/guest/setup?subjects=${encodeURIComponent(subjectId)}` : '/guest/setup'
+        );
         return;
       }
       const user = data.user;
@@ -40,6 +42,10 @@ export default function GoogleSignInButton({ onSuccess }) {
       }
       if (!user.emailVerified && !user.isGuest) {
         navigate('/verify-email');
+        return;
+      }
+      if (subjectId) {
+        navigate(`/start/${subjectId}`);
         return;
       }
       navigate('/dashboard');
