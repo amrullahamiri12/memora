@@ -10,7 +10,10 @@ import StatCard from '../components/ui/StatCard';
 import EmptyState from '../components/ui/EmptyState';
 import StudyTruncatedNotice from '../components/StudyTruncatedNotice';
 import StudyContextHeader from '../components/StudyContextHeader';
+import GuestSaveProgressNudge, { clearGuestNudgeDismiss } from '../components/GuestSaveProgressNudge';
 import { api } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+import { isGuestUser } from '../utils/guest';
 import {
   getStudyOptions,
   buildFlashcardsQuery,
@@ -19,6 +22,7 @@ import {
 
 export default function PracticePage() {
   const { topicId } = useParams();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const sessionMode = searchParams.get('session') || 'learn';
@@ -89,6 +93,7 @@ export default function PracticePage() {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(id);
+          clearGuestNudgeDismiss();
           setFinished(true);
           return 0;
         }
@@ -102,6 +107,7 @@ export default function PracticePage() {
     if (!topic) return;
     setCanAdvance(false);
     if (currentIndex + 1 >= topic.flashcards.length) {
+      clearGuestNudgeDismiss();
       setFinished(true);
     } else {
       setCurrentIndex((i) => i + 1);
@@ -215,6 +221,8 @@ export default function PracticePage() {
             </div>
           </Card>
 
+          {isGuestUser(user) && <GuestSaveProgressNudge variant="sessionComplete" />}
+
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button
               className="flex-1"
@@ -255,6 +263,9 @@ export default function PracticePage() {
 
   return (
     <Layout>
+      {isGuestUser(user) && (
+        <GuestSaveProgressNudge variant="compact" dismissible className="mb-4" />
+      )}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <button
           type="button"

@@ -8,12 +8,16 @@ import Alert from '../components/ui/Alert';
 import Card from '../components/ui/Card';
 import EmptyState from '../components/ui/EmptyState';
 import Pagination from '../components/ui/Pagination';
+import GuestSaveProgressNudge from '../components/GuestSaveProgressNudge';
 import { api } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+import { isGuestUser } from '../utils/guest';
 
 const TOPICS_PAGE_SIZE = 12;
 
 export default function SubjectPage() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [subject, setSubject] = useState(null);
   const [topicsPagination, setTopicsPagination] = useState(null);
   const [page, setPage] = useState(1);
@@ -53,6 +57,7 @@ export default function SubjectPage() {
 
   return (
     <Layout>
+      {isGuestUser(user) && <GuestSaveProgressNudge variant="banner" className="mb-6" />}
       <Link
         to="/dashboard"
         className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-[var(--accent)] hover:underline"

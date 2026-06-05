@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isStaff, isSuperAdmin } from '../utils/roles';
+import { isGuestUser } from '../utils/guest';
 import { useStudentPreview } from '../hooks/useStudentPreview';
 import {
   disableStudentView,
@@ -149,7 +150,16 @@ export default function Layout({ children }) {
                       </span>
                     )}
                   </Link>
-                  {navLink('/account', 'Account')}
+                  {isGuestUser(user) ? (
+                    <Link
+                      to="/account"
+                      className={`nav-link font-medium text-[var(--accent)] ${isActive('/account') ? 'nav-link-active' : ''}`}
+                    >
+                      Save progress
+                    </Link>
+                  ) : (
+                    navLink('/account', 'Account')
+                  )}
                 </>
               )}
               <span className="hidden rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm font-medium text-[var(--text-muted)] sm:inline">

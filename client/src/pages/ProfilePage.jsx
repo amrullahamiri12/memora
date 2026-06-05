@@ -9,11 +9,15 @@ import StatCard from '../components/ui/StatCard';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Pagination from '../components/ui/Pagination';
+import GuestBanner from '../components/GuestBanner';
 import { api } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+import { isGuestUser } from '../utils/guest';
 
 const TOPICS_PAGE_SIZE = 10;
 
 export default function ProfilePage() {
+  const { user: authUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [topicsPage, setTopicsPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -49,6 +53,7 @@ export default function ProfilePage() {
 
   return (
     <Layout>
+      {isGuestUser(authUser) && <GuestBanner />}
       <PageHeader title="Your Profile" subtitle={user.email} />
 
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

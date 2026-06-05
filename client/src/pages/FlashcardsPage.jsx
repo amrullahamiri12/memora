@@ -10,11 +10,15 @@ import StatCard from '../components/ui/StatCard';
 import EmptyState from '../components/ui/EmptyState';
 import StudyTruncatedNotice from '../components/StudyTruncatedNotice';
 import StudyContextHeader from '../components/StudyContextHeader';
+import GuestSaveProgressNudge, { clearGuestNudgeDismiss } from '../components/GuestSaveProgressNudge';
 import { api } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+import { isGuestUser } from '../utils/guest';
 import { getStudyOptions, buildFlashcardsQuery, saveLastTopic } from '../utils/studyStorage';
 
 export default function FlashcardsPage() {
   const { topicId } = useParams();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [topic, setTopic] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -83,6 +87,7 @@ export default function FlashcardsPage() {
     }));
 
     if (currentIndex + 1 >= topic.flashcards.length) {
+      clearGuestNudgeDismiss();
       setFinished(true);
     } else {
       setCurrentIndex((i) => i + 1);
@@ -147,6 +152,7 @@ export default function FlashcardsPage() {
               <StatCard value={session.needsPractice} label="Need practice" accent="warning" />
             </div>
           </Card>
+          {isGuestUser(user) && <GuestSaveProgressNudge variant="sessionComplete" />}
           <div className="flex gap-4">
             <Button
               className="flex-1"
@@ -185,6 +191,9 @@ export default function FlashcardsPage() {
 
   return (
     <Layout>
+      {isGuestUser(user) && (
+        <GuestSaveProgressNudge variant="compact" dismissible className="mb-4" />
+      )}
       <Link
         to={`/study/${topicId}`}
         state={{

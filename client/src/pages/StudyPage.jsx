@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import StudyModeCard from '../components/StudyModeCard';
 import StudyOptions from '../components/StudyOptions';
 import StudyContextHeader from '../components/StudyContextHeader';
+import GuestSaveProgressNudge from '../components/GuestSaveProgressNudge';
 import Spinner from '../components/ui/Spinner';
 import Alert from '../components/ui/Alert';
 import { api } from '../utils/api';
@@ -12,9 +13,12 @@ import {
   saveStudyOptions,
   buildFlashcardsQuery,
 } from '../utils/studyStorage';
+import { useAuth } from '../context/AuthContext';
+import { isGuestUser } from '../utils/guest';
 
 export default function StudyPage() {
   const { topicId } = useParams();
+  const { user } = useAuth();
   const location = useLocation();
   const stateTopic = location.state?.topic;
   const subjectId = location.state?.subjectId;
@@ -108,6 +112,9 @@ export default function StudyPage() {
 
   return (
     <Layout>
+      {isGuestUser(user) && (
+        <GuestSaveProgressNudge variant="compact" dismissible className="mb-4" />
+      )}
       <Link
         to={backTo}
         className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[var(--accent)] hover:underline"
