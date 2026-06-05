@@ -192,6 +192,50 @@ h1, h2, h3, h4 {
   }
 }
 
+.landing-stagger-1,
+.landing-stagger-2,
+.landing-stagger-3,
+.landing-stagger-4,
+.landing-stagger-5 {
+  opacity: 0;
+  animation: fadeInUp 0.55s ease forwards;
+}
+
+.landing-stagger-1 { animation-delay: 0.05s; }
+.landing-stagger-2 { animation-delay: 0.15s; }
+.landing-stagger-3 { animation-delay: 0.25s; }
+.landing-stagger-4 { animation-delay: 0.35s; }
+.landing-stagger-5 { animation-delay: 0.45s; }
+
+@keyframes landingFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.landing-float {
+  animation: landingFloat 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-stagger-1,
+  .landing-stagger-2,
+  .landing-stagger-3,
+  .landing-stagger-4,
+  .landing-stagger-5 {
+    opacity: 1;
+    animation: none;
+  }
+
+  .landing-float {
+    animation: none;
+  }
+}
+
 @keyframes scoreReveal {
   from {
     opacity: 0;

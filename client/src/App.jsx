@@ -70,6 +70,7 @@ function AppRoutes() {
   return (
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/home" element={<Landing />} />
           <Route
             path="/login"
             element={

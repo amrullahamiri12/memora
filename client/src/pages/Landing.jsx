@@ -1,26 +1,10 @@
-import { Link } from 'react-router-dom';
-import Button from '../components/ui/Button';
-import ContinueAsGuestButton from '../components/ContinueAsGuestButton';
 import PublicNav from '../components/PublicNav';
 import SiteFooter from '../components/SiteFooter';
+import LandingHero from '../components/landing/LandingHero';
+import LandingFeatureCard from '../components/landing/LandingFeatureCard';
+import { LANDING_FEATURES } from '../config/landingContent';
 
-const FEATURES = [
-  {
-    icon: '🧠',
-    title: 'Learn mode',
-    text: 'Mixed quizzes with instant feedback across question types.',
-  },
-  {
-    icon: '🃏',
-    title: 'Flashcards',
-    text: 'Flip cards and rate what you know — progress follows you.',
-  },
-  {
-    icon: '🔥',
-    title: 'Streaks & profile',
-    text: 'Daily practice tracking and per-topic study stats.',
-  },
-];
+const FEATURE_STAGGER = ['landing-stagger-3', 'landing-stagger-4', 'landing-stagger-5'];
 
 export default function Landing() {
   return (
@@ -36,79 +20,19 @@ export default function Landing() {
       <PublicNav />
 
       <main className="relative z-10 mx-auto max-w-6xl px-4 pb-20 pt-10 page-enter">
-        <section>
-          <p className="mb-4 inline-block rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">
-            Flashcards · quizzes · tests
-          </p>
-          <h1 className="font-display text-4xl font-bold leading-[1.1] text-[var(--text-heading)] sm:text-5xl lg:text-6xl">
-            Study smarter,
-            <br />
-            <span className="text-[var(--accent)]">remember longer.</span>
-          </h1>
-          <p className="mt-5 max-w-xl text-lg leading-relaxed text-[var(--text-muted)]">
-            Memora turns your subjects into adaptive practice — enroll in topics, run learn and test
-            sessions, and track progress over time.
-          </p>
-          <div className="mt-10 flex max-w-md flex-col gap-3 sm:max-w-none">
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link to="/register">
-                <Button className="min-w-[10rem] w-full px-8 py-3 sm:w-auto">Get started</Button>
-              </Link>
-              <Link to="/login">
-                <Button variant="secondary" className="min-w-[10rem] w-full px-8 py-3 sm:w-auto">
-                  Sign in
-                </Button>
-              </Link>
-            </div>
-            <ContinueAsGuestButton />
-          </div>
-        </section>
+        <LandingHero />
 
-        <section className="mt-16 grid gap-4 sm:grid-cols-3">
-          {FEATURES.map((item) => (
-            <article
+        <section className="mt-20 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {LANDING_FEATURES.map((item, index) => (
+            <LandingFeatureCard
               key={item.title}
-              className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] backdrop-blur-sm"
-            >
-              <span className="text-2xl" aria-hidden>
-                {item.icon}
-              </span>
-              <h2 className="mt-3 font-semibold text-[var(--text-heading)]">{item.title}</h2>
-              <p className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">{item.text}</p>
-            </article>
+              title={item.title}
+              text={item.text}
+              image={item.image}
+              alt={item.alt}
+              staggerClass={FEATURE_STAGGER[index] ?? 'landing-stagger-5'}
+            />
           ))}
-        </section>
-
-        <section className="mt-12 rounded-2xl border border-[var(--border)] bg-[var(--surface-solid)] p-6 sm:p-8">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-left">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">
-                For developers
-              </p>
-              <h2 className="mt-1 font-display text-2xl font-bold text-[var(--text-heading)]">
-                Memora API
-              </h2>
-              <p className="mt-2 max-w-lg text-sm leading-relaxed text-[var(--text-muted)]">
-                OpenAPI 3 documentation with try-it-out requests. Same-origin{' '}
-                <code className="rounded bg-[var(--tone-sage-bg)] px-1.5 py-0.5 text-xs text-[var(--text)]">
-                  /api
-                </code>{' '}
-                on production; Bearer JWT for protected routes.
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-              <a href="/api-docs.html" className="btn-primary w-full whitespace-nowrap sm:w-auto">
-                Open API docs
-              </a>
-              <a
-                href="/openapi.yaml"
-                download
-                className="btn-secondary w-full whitespace-nowrap sm:w-auto"
-              >
-                Download OpenAPI
-              </a>
-            </div>
-          </div>
         </section>
       </main>
 
