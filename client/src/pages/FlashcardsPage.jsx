@@ -203,7 +203,8 @@ export default function FlashcardsPage() {
             subjectId={topic.subject?.id}
             subjectName={topic.subject?.name}
             topicName={topic.name}
-            modeLabel="Flashcards · tap card to flip"
+            modeLabel="Flashcards"
+            hint="Tap card to flip"
           />
           <span className="shrink-0 rounded-full bg-[var(--accent-glow)] px-3 py-1 text-sm font-medium text-[var(--accent)]">
             {currentIndex + 1} / {topic.flashcards.length}
