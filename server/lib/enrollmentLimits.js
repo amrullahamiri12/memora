@@ -1,5 +1,6 @@
 const db = require('./pg');
 const { isGuestEmail } = require('./guestIdentity');
+const { entitlementsFor } = require('./entitlements');
 
 const MAX_ACTIVE_SUBJECTS_GUEST = 3;
 const MAX_ACTIVE_SUBJECTS_REGISTERED = 5;
@@ -8,9 +9,7 @@ const GUEST_AT_LIMIT_MESSAGE =
   'You already have 3 active subjects. Sign up for a free account to practice more subjects.';
 
 function getMaxActiveSubjects(userOrEmail) {
-  const email = typeof userOrEmail === 'string' ? userOrEmail : userOrEmail?.email;
-  if (!email) return MAX_ACTIVE_SUBJECTS_REGISTERED;
-  return isGuestEmail(email) ? MAX_ACTIVE_SUBJECTS_GUEST : MAX_ACTIVE_SUBJECTS_REGISTERED;
+  return entitlementsFor(userOrEmail).maxActiveSubjects;
 }
 
 function isGuestAccount(userOrEmail) {

@@ -1,6 +1,6 @@
 const { isGuestEmail } = require('./guestIdentity');
 
-const USER_PUBLIC_COLUMNS = `id, name, email, role,
+const USER_PUBLIC_COLUMNS = `id, name, email, role, plan,
   password_hash AS "passwordHash",
   google_id AS "googleId",
   email_verified_at AS "emailVerifiedAt",
@@ -43,6 +43,7 @@ function publicUser(row) {
     name: row.name,
     email: row.email,
     role: row.role,
+    plan: row.plan || 'FREE',
     emailVerified: isEmailVerified(row),
     hasPassword: Boolean(row.passwordHash),
     hasGoogle: Boolean(row.googleId),
