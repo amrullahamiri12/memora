@@ -847,6 +847,13 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
     return createAdminUser(auth.user, body);
   }
 
+  if (method === 'POST' && contactPath(path)) {
+    if (!body) return { status: 400, body: { error: 'Request body required' } };
+    const { submitContact } = require('./contact');
+    const result = await submitContact(body);
+    return { status: result.status, body: result.body };
+  }
+
   if (method === 'POST' && subjectsEnrollPath(path)) {
     const auth = await requireUser(authHeader, { requireVerified: true });
     if (auth.error) return auth.error;
@@ -951,6 +958,11 @@ function subjectsAvailablePath(path) {
 function subjectsEnrollPath(path) {
   const normalized = path.replace(/\/$/, '');
   return normalized === '/subjects/enroll' || normalized === '/api/subjects/enroll';
+}
+
+function contactPath(path) {
+  const normalized = path.replace(/\/$/, '');
+  return normalized === '/contact' || normalized === '/api/contact';
 }
 
 function progressPath(path) {

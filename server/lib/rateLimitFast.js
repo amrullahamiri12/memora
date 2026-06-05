@@ -36,4 +36,8 @@ function checkProgressRateLimit(req) {
   return check(`progress:${clientIp(req)}`, { windowMs: 60 * 1000, max: 150 });
 }
 
-module.exports = { checkAuthRateLimit, checkProgressRateLimit, clientIp };
+function checkContactRateLimit(req) {
+  return check(`contact:${clientIp(req)}`, { windowMs: 60 * 60 * 1000, max: 5 });
+}
+
+module.exports = { checkAuthRateLimit, checkProgressRateLimit, checkContactRateLimit, clientIp };

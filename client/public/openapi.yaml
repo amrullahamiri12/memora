@@ -10,7 +10,7 @@ info:
 
     **Roles:** `USER`, `ADMIN`, `SUPER_ADMIN`. Staff (`ADMIN`, `SUPER_ADMIN`) see all subjects and can use admin routes.
 
-    **Rate limits:** Auth-related POST routes (login, register, guest, Google, password reset, verify, close account) — 40 requests per 15 minutes per IP. Progress POST — 150 requests per minute per IP.
+    **Rate limits:** Auth-related POST routes (login, register, guest, Google, password reset, verify, close account) — 40 requests per 15 minutes per IP. Progress POST — 150 requests per minute per IP. Contact POST — 5 requests per hour per IP.
 
     **Account lifecycle:** Users are **deactivated** (not hard-deleted). Learners may **close** their own account. Super admins can **reactivate** deactivated users and **verify email** manually.
 
@@ -37,6 +37,7 @@ servers:
 
 tags:
   - name: Health
+  - name: Public
   - name: Auth
   - name: Subjects
   - name: Study
@@ -333,6 +334,52 @@ paths:
                   database: { type: string, example: connected }
         '503':
           description: Database unreachable
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /contact:
+    post:
+      tags: [Public]
+      summary: Submit contact form
+      description: |
+        Public contact form. Sends email to `CONTACT_EMAIL` via Resend when configured.
+        Honeypot field `company` must be empty.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, message]
+              properties:
+                name: { type: string, maxLength: 100 }
+                email: { type: string, format: email }
+                message: { type: string, minLength: 10, maxLength: 2000 }
+                company:
+                  type: string
+                  description: Honeypot — leave empty
+      responses:
+        '200':
+          description: Message accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: 'Thanks — we received your message.' }
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: Contact email not configured
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }

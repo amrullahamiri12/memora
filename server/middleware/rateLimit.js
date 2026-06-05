@@ -16,4 +16,12 @@ const progressLimiter = rateLimit({
   message: { error: 'Too many requests. Slow down and try again.' },
 });
 
-module.exports = { authLimiter, progressLimiter };
+const contactLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many contact requests. Please try again later.' },
+});
+
+module.exports = { authLimiter, progressLimiter, contactLimiter };

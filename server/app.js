@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const { validateConfig } = require('./lib/config');
-const { authLimiter, progressLimiter } = require('./middleware/rateLimit');
+const { authLimiter, progressLimiter, contactLimiter } = require('./middleware/rateLimit');
 const pg = require('./lib/pg');
 
 function lazy(loader) {
@@ -68,6 +68,7 @@ app.use('/api/topics', lazy(() => require('./routes/topics')));
 app.use('/api/progress', progressLimiter, lazy(() => require('./routes/progress')));
 app.use('/api/profile', lazy(() => require('./routes/profile')));
 app.use('/api/admin', lazy(() => require('./routes/admin')));
+app.use('/api/contact', contactLimiter, lazy(() => require('./routes/contact')));
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Not found' });

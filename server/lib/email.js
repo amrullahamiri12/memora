@@ -71,6 +71,57 @@ async function sendPasswordResetEmail(to, token) {
   return sendEmail({ to, subject: 'Reset your Memora password', html });
 }
 
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function sendContactEmail({ name, email, message }) {
+  const to = process.env.CONTACT_EMAIL?.trim();
+  if (!to) {
+    return { ok: false, skipped: true, reason: 'contact_not_configured' };
+  }
+
+  const html = `
+    <p><strong>New contact form submission</strong></p>
+    <p><strong>Name:</strong> ${escapeHtml(name)}</p>
+    <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+    <p><strong>Message:</strong></p>
+    <p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>
+  `;
+
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    return { ok: false, skipped: true, reason: 'email_not_configured' };
+  }
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: fromAddress(),
+      to: [to],
+      reply_to: [email],
+      subject: `Memora contact: ${name}`.slice(0, 120),
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    const errMsg = formatResendError(text);
+    console.error('[email] Contact Resend error:', res.status, errMsg);
+    return { ok: false, status: res.status, error: errMsg };
+  }
+  return { ok: true };
+}
+
 function isEmailConfigured() {
   return Boolean(process.env.RESEND_API_KEY);
 }
@@ -95,4 +146,5 @@ module.exports = {
   emailSendFailureMessage,
   sendVerificationEmail,
   sendPasswordResetEmail,
+  sendContactEmail,
 };

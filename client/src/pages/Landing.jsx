@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom';
-import Logo from '../components/Logo';
 import Button from '../components/ui/Button';
-import ThemeToggle from '../components/ThemeToggle';
 import ContinueAsGuestButton from '../components/ContinueAsGuestButton';
+import PublicNav from '../components/PublicNav';
 import SiteFooter from '../components/SiteFooter';
 
 const FEATURES = [
@@ -34,31 +33,7 @@ export default function Landing() {
         }}
       />
 
-      <header
-        className="app-nav relative z-10 border-b backdrop-blur-xl"
-        style={{ background: 'var(--nav-bg)' }}
-      >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <div className="nav-brand">
-            <Logo to="/" variant="nav" />
-          </div>
-          <nav className="flex items-center gap-3 sm:gap-4">
-            <a
-              href="/api-docs.html"
-              className="hidden text-sm font-medium text-[var(--text-muted)] hover:text-[var(--accent)] sm:inline"
-            >
-              API docs
-            </a>
-            <ThemeToggle />
-            <Link
-              to="/login"
-              className="text-sm font-semibold text-[var(--accent)] hover:underline"
-            >
-              Sign in
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <PublicNav />
 
       <main className="relative z-10 mx-auto max-w-6xl px-4 pb-20 pt-10 page-enter">
         <section>

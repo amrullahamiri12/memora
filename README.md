@@ -100,6 +100,7 @@ CLIENT_URL="http://localhost:5173"
 | `APP_URL` | Server (Vercel) | Public app URL for email links (e.g. `https://memora.cards`) |
 | `RESEND_API_KEY` | Server (Vercel) | [Resend](https://resend.com) API key for verification and reset emails |
 | `EMAIL_FROM` | Server (Vercel) | Sender on a verified domain, e.g. `Memora <noreply@memora.cards>` |
+| `CONTACT_EMAIL` | Server (Vercel) | Inbox for public contact form submissions (`POST /api/contact`) |
 | `GOOGLE_CLIENT_ID` | Server (Vercel) | Google OAuth 2.0 **Web** client ID |
 | `VITE_GOOGLE_CLIENT_ID` | Client build (Vercel) | Same Web client ID (required for Google button in UI) |
 

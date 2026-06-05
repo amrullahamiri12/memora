@@ -26,6 +26,27 @@ const ROUTE_META = {
     description: 'Create a free Memora account, pick subjects, and start studying with flashcards and quizzes.',
     index: true,
   },
+  '/about': {
+    title: 'About — Memora',
+    description:
+      'Learn about Memora — adaptive flashcards, quizzes, progress tracking, and admin tools for learners and teams.',
+    index: true,
+  },
+  '/contact': {
+    title: 'Contact us — Memora',
+    description: 'Get in touch with the Memora team for support, partnerships, or general questions.',
+    index: true,
+  },
+  '/privacy': {
+    title: 'Privacy policy — Memora',
+    description: 'How Memora collects, uses, and protects your account and study data.',
+    index: true,
+  },
+  '/terms': {
+    title: 'Terms of service — Memora',
+    description: 'Terms of use for the Memora study app at memora.cards.',
+    index: true,
+  },
   '/forgot-password': {
     title: 'Forgot password — Memora',
     description: 'Reset your Memora account password.',

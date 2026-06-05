@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { COMPANY_FOOTER_LINKS } from '../config/publicNav';
 
 const FOOTER_SECTIONS = [
   {
@@ -8,6 +9,10 @@ const FOOTER_SECTIONS = [
       { label: 'Sign in', to: '/login' },
       { label: 'Reset password', to: '/forgot-password' },
     ],
+  },
+  {
+    title: 'Company',
+    links: COMPANY_FOOTER_LINKS,
   },
   {
     title: 'Developers',
@@ -55,7 +60,7 @@ export default function SiteFooter() {
   return (
     <footer className="relative z-10 border-t border-[var(--border)]">
       <div className="mx-auto max-w-6xl px-4 py-10">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
           <div className="sm:col-span-2 lg:col-span-1">
             <p className="font-display text-lg font-bold text-[var(--text-heading)]">Memora</p>
             <p className="mt-2 max-w-xs text-sm leading-relaxed text-[var(--text-muted)]">
@@ -82,10 +87,7 @@ export default function SiteFooter() {
         <div className="mt-10 flex flex-col gap-2 border-t border-[var(--border)] pt-6 text-sm text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between">
           <p>
             © {year} Memora ·{' '}
-            <a
-              href="https://memora.cards/"
-              className="hover:text-[var(--accent)]"
-            >
+            <a href="https://memora.cards/" className="hover:text-[var(--accent)]">
               memora.cards
             </a>
           </p>

@@ -1,6 +1,6 @@
 const serverless = require('serverless-http');
 const { validateConfig } = require('../server/lib/config');
-const { checkAuthRateLimit, checkProgressRateLimit } = require('../server/lib/rateLimitFast');
+const { checkAuthRateLimit, checkProgressRateLimit, checkContactRateLimit } = require('../server/lib/rateLimitFast');
 
 let expressHandler;
 
@@ -216,6 +216,10 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST' && match(p, '/progress')) {
       if (!applyRateLimit(res, checkProgressRateLimit(req))) return;
+    }
+
+    if (req.method === 'POST' && match(p, '/contact')) {
+      if (!applyRateLimit(res, checkContactRateLimit(req))) return;
     }
 
     const body =
