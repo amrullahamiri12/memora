@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { USER_PUBLIC_COLUMNS, publicUser } = require('./authUser');
 const { canDeleteUser } = require('./roles');
 const { isGuestEmail } = require('./guestIdentity');
+const { auditFire, AUDIT_ACTIONS, actorFromUser, userSnapshot } = require('./audit');
 
 async function countActiveSuperAdmins(excludeUserId) {
   if (excludeUserId) {
@@ -29,7 +30,7 @@ async function findUserRow(userId) {
   return rows[0] || null;
 }
 
-async function deactivateUser(actor, targetId) {
+async function deactivateUser(actor, targetId, ctx = {}) {
   const existing = await findUserRow(targetId);
   if (!existing) {
     return { status: 404, body: { error: 'User not found' } };
@@ -56,13 +57,24 @@ async function deactivateUser(actor, targetId) {
      RETURNING ${USER_PUBLIC_COLUMNS}, deactivated_at AS "deactivatedAt"`,
     [targetId]
   );
+
+  auditFire({
+    action: AUDIT_ACTIONS.USER_DEACTIVATED,
+    ...actorFromUser(actor),
+    ...ctx,
+    entityType: 'user',
+    entityId: targetId,
+    targetUserId: targetId,
+    metadata: { before: userSnapshot(existing), after: userSnapshot(rows[0]) },
+  });
+
   return {
     status: 200,
     body: { message: 'User deactivated', user: publicUser(rows[0]) },
   };
 }
 
-async function reactivateUser(actor, targetId) {
+async function reactivateUser(actor, targetId, ctx = {}) {
   if (actor.role !== 'SUPER_ADMIN') {
     return { status: 403, body: { error: 'Super admin access required' } };
   }
@@ -81,13 +93,24 @@ async function reactivateUser(actor, targetId) {
      RETURNING ${USER_PUBLIC_COLUMNS}, deactivated_at AS "deactivatedAt"`,
     [targetId]
   );
+
+  auditFire({
+    action: AUDIT_ACTIONS.USER_REACTIVATED,
+    ...actorFromUser(actor),
+    ...ctx,
+    entityType: 'user',
+    entityId: targetId,
+    targetUserId: targetId,
+    metadata: { before: userSnapshot(existing), after: userSnapshot(rows[0]) },
+  });
+
   return {
     status: 200,
     body: { message: 'User reactivated', user: publicUser(rows[0]) },
   };
 }
 
-async function closeAccount(userId, password) {
+async function closeAccount(userId, password, ctx = {}) {
   const user = await findUserRow(userId);
   if (!user) {
     return { status: 401, body: { error: 'User not found' } };
@@ -115,6 +138,17 @@ async function closeAccount(userId, password) {
   }
 
   await db.query(`UPDATE users SET deactivated_at = NOW() WHERE id = $1`, [userId]);
+
+  auditFire({
+    action: AUDIT_ACTIONS.AUTH_CLOSE_ACCOUNT,
+    ...actorFromUser(user),
+    ...ctx,
+    entityType: 'user',
+    entityId: userId,
+    targetUserId: userId,
+    metadata: { before: userSnapshot(user) },
+  });
+
   return {
     status: 200,
     body: {

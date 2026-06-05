@@ -456,6 +456,17 @@ npm run sync:openapi      # copy docs/openapi.yaml → client/public/
 
 **Next test improvements:** DB integration tests, Playwright E2E, ESLint in CI after rule cleanup.
 
+### Audit log verification (PostgreSQL / Supabase)
+
+After applying the `audit_events` migration:
+
+1. Create or pick a disposable test user (not production data).
+2. In the Supabase SQL editor (or `psql`), run: `DELETE FROM users WHERE email = 'your-test@example.com';`
+3. Query: `SELECT action, source, metadata FROM audit_events WHERE action = 'USER_DELETED_DB' ORDER BY occurred_at DESC LIMIT 1;`
+4. Expect one row with `source = DB_TRIGGER` and a `metadata.snapshot` of the deleted user.
+
+Super admins can also browse events at **Admin → Audit log** (`/admin/audit`) after a normal login or admin action.
+
 ## Scripts
 
 | Command | Location | Description |

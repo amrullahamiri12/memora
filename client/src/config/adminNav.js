@@ -51,6 +51,7 @@ export function isNavItemActive(pathname, to, exact = false) {
   if (exact) return pathname === to;
   if (to === '/admin/dashboard') return pathname === '/admin/dashboard';
   if (to === '/admin/cards') return pathname === '/admin/cards';
+  if (to === '/admin/audit') return pathname === '/admin/audit';
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 

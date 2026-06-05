@@ -8,6 +8,7 @@ const validate = require('../middleware/validate');
 const fastAuth = require('../lib/fastAuth');
 const { isGuestEmail } = require('../lib/guestIdentity');
 const { publicUser } = require('../lib/authUser');
+const { buildRequestContext } = require('../lib/audit');
 
 const router = express.Router();
 
@@ -30,7 +31,7 @@ router.post(
   validate,
   async (req, res) => {
     try {
-      send(res, await fastAuth.register(req.body));
+      send(res, await fastAuth.register(req.body, buildRequestContext(req)));
     } catch (err) {
       console.error('Register error:', err);
       res.status(500).json({ error: 'Registration failed' });
@@ -47,7 +48,7 @@ router.post(
   validate,
   async (req, res) => {
     try {
-      send(res, await fastAuth.login(req.body.email, req.body.password));
+      send(res, await fastAuth.login(req.body.email, req.body.password, buildRequestContext(req)));
     } catch (err) {
       console.error('Login error:', err);
       res.status(500).json({ error: 'Login failed' });
@@ -87,7 +88,10 @@ router.post(
 
 router.post('/verify-email', optionalAuth, async (req, res) => {
   try {
-    send(res, await fastAuth.verifyEmail(req.body.token, { userId: req.user?.id }));
+    send(res, await fastAuth.verifyEmail(req.body.token, {
+      userId: req.user?.id,
+      auditCtx: buildRequestContext(req),
+    }));
   } catch (err) {
     console.error('Verify email error:', err);
     res.status(500).json({ error: 'Verification failed' });
@@ -96,7 +100,7 @@ router.post('/verify-email', optionalAuth, async (req, res) => {
 
 router.post('/resend-verification', authMiddleware, async (req, res) => {
   try {
-    send(res, await fastAuth.resendVerification(req.user.id));
+    send(res, await fastAuth.resendVerification(req.user.id, buildRequestContext(req)));
   } catch (err) {
     console.error('Resend verification error:', err);
     res.status(500).json({ error: 'Could not send verification email' });
@@ -109,7 +113,7 @@ router.post(
   validate,
   async (req, res) => {
     try {
-      send(res, await fastAuth.forgotPassword(req.body.email));
+      send(res, await fastAuth.forgotPassword(req.body.email, buildRequestContext(req)));
     } catch (err) {
       console.error('Forgot password error:', err);
       res.status(500).json({ error: 'Request failed' });
@@ -128,7 +132,11 @@ router.post(
   validate,
   async (req, res) => {
     try {
-      send(res, await fastAuth.resetPassword(req.body.token, req.body.password));
+      send(res, await fastAuth.resetPassword(
+        req.body.token,
+        req.body.password,
+        buildRequestContext(req)
+      ));
     } catch (err) {
       console.error('Reset password error:', err);
       res.status(500).json({ error: 'Reset failed' });
@@ -138,7 +146,7 @@ router.post(
 
 router.post('/google', async (req, res) => {
   try {
-    send(res, await fastAuth.loginWithGoogle(req.body));
+    send(res, await fastAuth.loginWithGoogle(req.body, buildRequestContext(req)));
   } catch (err) {
     console.error('Google auth error:', err);
     res.status(500).json({ error: 'Google sign-in failed' });
@@ -159,7 +167,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 
 router.post('/close-account', authMiddleware, async (req, res) => {
   try {
-    send(res, await fastAuth.closeUserAccount(req.user.id, req.body.password));
+    send(res, await fastAuth.closeUserAccount(req.user.id, req.body.password, buildRequestContext(req)));
   } catch (err) {
     console.error('Close account error:', err);
     res.status(500).json({ error: 'Failed to close account' });

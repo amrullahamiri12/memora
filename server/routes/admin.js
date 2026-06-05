@@ -30,6 +30,14 @@ const { parsePagination, paginatedResponse } = require('../lib/pagination');
 const { getMaxCsvBytes } = require('../lib/config');
 const { getOverview, getLearners, getContent } = require('../lib/adminReports');
 const { parseUserGroupFilter } = require('../lib/adminUserFilters');
+const {
+  auditFire,
+  AUDIT_ACTIONS,
+  actorFromUser,
+  userSnapshot,
+  buildRequestContext,
+  listAuditEvents,
+} = require('../lib/audit');
 
 const router = express.Router();
 
@@ -92,6 +100,18 @@ function flashcardDataFromBody(body) {
   };
 }
 
+function flashcardSnapshot(flashcard) {
+  if (!flashcard) return null;
+  return {
+    id: flashcard.id,
+    questionType: flashcard.questionType,
+    topicId: flashcard.topicId,
+    difficulty: flashcard.difficulty,
+    subjectName: flashcard.topic?.subject?.name ?? flashcard.subjectName,
+    topicName: flashcard.topic?.name ?? flashcard.topicName,
+  };
+}
+
 router.use(authMiddleware, adminMiddleware);
 
 const userSelect = {
@@ -148,6 +168,12 @@ router.get('/reports/learners', async (req, res) => {
   try {
     const result = await getLearners(req.query);
     if (result.csv) {
+      auditFire({
+        action: AUDIT_ACTIONS.FLASHCARD_CSV_EXPORTED,
+        ...actorFromUser(req.user),
+        ...buildRequestContext(req),
+        metadata: { kind: 'learners', filename: result.filename },
+      });
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
       return res.send(result.csv);
@@ -165,6 +191,28 @@ router.get('/reports/content', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to load content report' });
+  }
+});
+
+router.get('/audit-events', async (req, res) => {
+  try {
+    if (req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Super admin access required' });
+    }
+    const result = await listAuditEvents({
+      page: req.query.page ? Number(req.query.page) : 1,
+      limit: req.query.limit ? Number(req.query.limit) : 50,
+      action: req.query.action || null,
+      source: req.query.source || null,
+      actorUserId: req.query.actorUserId || null,
+      targetUserId: req.query.targetUserId || null,
+      from: req.query.from || null,
+      to: req.query.to || null,
+    });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load audit events' });
   }
 });
 
@@ -228,6 +276,16 @@ router.post(
         await enrollUserInSubjects(user.id, req.body.subjectIds, { skipLimitCheck: true });
       }
 
+      auditFire({
+        action: AUDIT_ACTIONS.ADMIN_USER_CREATED,
+        ...actorFromUser(req.user),
+        ...buildRequestContext(req),
+        entityType: 'user',
+        entityId: user.id,
+        targetUserId: user.id,
+        metadata: { after: userSnapshot(user) },
+      });
+
       res.status(201).json(formatAdminUser(user));
     } catch (err) {
       console.error(err);
@@ -290,6 +348,20 @@ router.put(
         select: userSelect,
       });
 
+      auditFire({
+        action: AUDIT_ACTIONS.ADMIN_USER_UPDATED,
+        ...actorFromUser(req.user),
+        ...buildRequestContext(req),
+        entityType: 'user',
+        entityId: targetId,
+        targetUserId: targetId,
+        metadata: {
+          before: userSnapshot(existing),
+          after: userSnapshot(user),
+          passwordChanged: Boolean(password),
+        },
+      });
+
       res.json(formatAdminUser(user));
     } catch (err) {
       console.error(err);
@@ -300,7 +372,7 @@ router.put(
 
 router.delete('/users/:id', async (req, res) => {
   try {
-    const result = await deactivateUser(req.user, req.params.id);
+    const result = await deactivateUser(req.user, req.params.id, buildRequestContext(req));
     res.status(result.status).json(result.body);
   } catch (err) {
     console.error(err);
@@ -310,7 +382,7 @@ router.delete('/users/:id', async (req, res) => {
 
 router.post('/users/:id/reactivate', async (req, res) => {
   try {
-    const result = await reactivateUser(req.user, req.params.id);
+    const result = await reactivateUser(req.user, req.params.id, buildRequestContext(req));
     res.status(result.status).json(result.body);
   } catch (err) {
     console.error(err);
@@ -332,6 +404,16 @@ router.post('/users/:id/verify-email', async (req, res) => {
         verificationTokenExpires: null,
       },
       select: userSelect,
+    });
+
+    auditFire({
+      action: AUDIT_ACTIONS.ADMIN_VERIFY_EMAIL,
+      ...actorFromUser(req.user),
+      ...buildRequestContext(req),
+      entityType: 'user',
+      entityId: req.params.id,
+      targetUserId: req.params.id,
+      metadata: { after: userSnapshot(user) },
     });
 
     res.json({ message: 'Email marked as verified', user: formatAdminUser(user) });
@@ -390,6 +472,14 @@ router.post(
       }
 
       const subject = await prisma.subject.create({ data: { name } });
+      auditFire({
+        action: AUDIT_ACTIONS.SUBJECT_CREATED,
+        ...actorFromUser(req.user),
+        ...buildRequestContext(req),
+        entityType: 'subject',
+        entityId: subject.id,
+        metadata: { name },
+      });
       res.status(201).json({ id: subject.id, name: subject.name, topicCount: 0, cardCount: 0, topics: [] });
     } catch (err) {
       console.error(err);
@@ -412,9 +502,22 @@ router.put(
         return res.status(409).json({ error: 'Subject name already in use' });
       }
 
+      const before = await prisma.subject.findUnique({ where: { id: req.params.id } });
+      if (!before) {
+        return res.status(404).json({ error: 'Subject not found' });
+      }
+
       const subject = await prisma.subject.update({
         where: { id: req.params.id },
         data: { name },
+      });
+      auditFire({
+        action: AUDIT_ACTIONS.SUBJECT_UPDATED,
+        ...actorFromUser(req.user),
+        ...buildRequestContext(req),
+        entityType: 'subject',
+        entityId: subject.id,
+        metadata: { before: { id: before.id, name: before.name }, after: { id: subject.id, name: subject.name } },
       });
       res.json({ id: subject.id, name: subject.name });
     } catch (err) {
@@ -429,7 +532,16 @@ router.put(
 
 router.delete('/subjects/:id', async (req, res) => {
   try {
+    const before = await prisma.subject.findUnique({ where: { id: req.params.id } });
     await prisma.subject.delete({ where: { id: req.params.id } });
+    auditFire({
+      action: AUDIT_ACTIONS.SUBJECT_DELETED,
+      ...actorFromUser(req.user),
+      ...buildRequestContext(req),
+      entityType: 'subject',
+      entityId: req.params.id,
+      metadata: { before: before ? { id: before.id, name: before.name } : null },
+    });
     res.json({ message: 'Subject deleted' });
   } catch (err) {
     if (err.code === 'P2025') {
@@ -465,6 +577,14 @@ router.post(
       }
 
       const topic = await prisma.topic.create({ data: { subjectId, name } });
+      auditFire({
+        action: AUDIT_ACTIONS.TOPIC_CREATED,
+        ...actorFromUser(req.user),
+        ...buildRequestContext(req),
+        entityType: 'topic',
+        entityId: topic.id,
+        metadata: { name, subjectId },
+      });
       res.status(201).json({ id: topic.id, name: topic.name, subjectId, cardCount: 0 });
     } catch (err) {
       console.error(err);
@@ -496,6 +616,17 @@ router.put(
         where: { id: req.params.id },
         data: { name },
       });
+      auditFire({
+        action: AUDIT_ACTIONS.TOPIC_UPDATED,
+        ...actorFromUser(req.user),
+        ...buildRequestContext(req),
+        entityType: 'topic',
+        entityId: req.params.id,
+        metadata: {
+          before: { id: topic.id, name: topic.name, subjectId: topic.subjectId },
+          after: { id: updated.id, name: updated.name, subjectId: updated.subjectId },
+        },
+      });
       res.json({ id: updated.id, name: updated.name, subjectId: updated.subjectId });
     } catch (err) {
       if (err.code === 'P2025') {
@@ -509,7 +640,20 @@ router.put(
 
 router.delete('/topics/:id', async (req, res) => {
   try {
+    const before = await prisma.topic.findUnique({ where: { id: req.params.id } });
     await prisma.topic.delete({ where: { id: req.params.id } });
+    auditFire({
+      action: AUDIT_ACTIONS.TOPIC_DELETED,
+      ...actorFromUser(req.user),
+      ...buildRequestContext(req),
+      entityType: 'topic',
+      entityId: req.params.id,
+      metadata: {
+        before: before
+          ? { id: before.id, name: before.name, subjectId: before.subjectId }
+          : null,
+      },
+    });
     res.json({ message: 'Topic deleted' });
   } catch (err) {
     if (err.code === 'P2025') {
@@ -531,6 +675,12 @@ router.post(
         return res.status(413).json({ error: 'CSV file is too large (max 2MB)' });
       }
       const results = await importFlashcardsFromCsv(csv);
+      auditFire({
+        action: AUDIT_ACTIONS.FLASHCARD_CSV_IMPORTED,
+        ...actorFromUser(req.user),
+        ...buildRequestContext(req),
+        metadata: results,
+      });
       res.json(results);
     } catch (err) {
       res.status(400).json({ error: err.message || 'Invalid CSV' });
@@ -544,9 +694,15 @@ router.get('/flashcards/import/template', (_req, res) => {
   res.send(getCsvTemplate());
 });
 
-router.get('/flashcards/export', async (_req, res) => {
+router.get('/flashcards/export', async (req, res) => {
   try {
     const csv = await exportFlashcardsCsv();
+    auditFire({
+      action: AUDIT_ACTIONS.FLASHCARD_CSV_EXPORTED,
+      ...actorFromUser(req.user),
+      ...buildRequestContext(req),
+      metadata: { kind: 'flashcards', filename: 'memora-flashcards-export.csv' },
+    });
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="memora-flashcards-export.csv"');
     res.send(csv);
@@ -644,6 +800,15 @@ router.post(
         },
       });
 
+      auditFire({
+        action: AUDIT_ACTIONS.FLASHCARD_CREATED,
+        ...actorFromUser(req.user),
+        ...buildRequestContext(req),
+        entityType: 'flashcard',
+        entityId: flashcard.id,
+        metadata: { after: flashcardSnapshot(flashcard) },
+      });
+
       res.status(201).json(flashcardToJson(flashcard));
     } catch (err) {
       if (err.status === 400) {
@@ -664,6 +829,14 @@ router.put(
       const data = flashcardDataFromBody(req.body);
       const topicRecord = await findOrCreateTopic(data.subject, data.topic);
 
+      const before = await prisma.flashcard.findUnique({
+        where: { id: req.params.id },
+        include: { topic: { include: { subject: true } } },
+      });
+      if (!before) {
+        return res.status(404).json({ error: 'Flashcard not found' });
+      }
+
       const flashcard = await prisma.flashcard.update({
         where: { id: req.params.id },
         data: {
@@ -679,6 +852,15 @@ router.put(
         include: {
           topic: { include: { subject: true } },
         },
+      });
+
+      auditFire({
+        action: AUDIT_ACTIONS.FLASHCARD_UPDATED,
+        ...actorFromUser(req.user),
+        ...buildRequestContext(req),
+        entityType: 'flashcard',
+        entityId: flashcard.id,
+        metadata: { before: flashcardSnapshot(before), after: flashcardSnapshot(flashcard) },
       });
 
       res.json(flashcardToJson(flashcard));
@@ -697,7 +879,19 @@ router.put(
 
 router.delete('/flashcards/:id', async (req, res) => {
   try {
+    const before = await prisma.flashcard.findUnique({
+      where: { id: req.params.id },
+      include: { topic: { include: { subject: true } } },
+    });
     await prisma.flashcard.delete({ where: { id: req.params.id } });
+    auditFire({
+      action: AUDIT_ACTIONS.FLASHCARD_DELETED,
+      ...actorFromUser(req.user),
+      ...buildRequestContext(req),
+      entityType: 'flashcard',
+      entityId: req.params.id,
+      metadata: { before: flashcardSnapshot(before) },
+    });
     res.json({ message: 'Flashcard deleted' });
   } catch (err) {
     if (err.code === 'P2025') {

@@ -16,7 +16,7 @@ Last reviewed: **June 2026** (codebase on `main`). This document summarizes cont
 | Transport & headers | **Pass** | Helmet on Express; production assumes HTTPS (Vercel). |
 | Secrets in repo | **Pass** | `.env` gitignored; examples use placeholders only. |
 | Session storage | **Advisory** | JWT in `localStorage` — XSS could exfiltrate tokens; see roadmap. |
-| Automated tests | **Pass** | 30 unit/smoke tests; GitHub Actions on `main`. |
+| Automated tests | **Pass** | 67 unit/smoke tests; GitHub Actions on `main`. |
 | Vercel bundle | **Pass** | No `includeFiles: server/**`; Linux-only Prisma engine on deploy. |
 
 ## Authentication & accounts
@@ -36,6 +36,21 @@ Last reviewed: **June 2026** (codebase on `main`). This document summarizes cont
 - **SQL:** Parameterized queries in fast paths (`pg`); Prisma for Express routes.
 - **Admin:** `authMiddleware` + `adminMiddleware`; super-admin-only reactivate and manual verify-email.
 - **Reporting:** Guest users excluded from learner metrics (`%@guest.memora.local`).
+
+## Audit trail
+
+Memora records security and admin actions in an append-only `audit_events` table (application writes + PostgreSQL `BEFORE DELETE` trigger on `users`).
+
+| Source | What it captures |
+|--------|------------------|
+| **APP** | Login success/failure, registration, account close, admin CRUD, CSV import/export, contact form, rate-limit hits |
+| **DB_TRIGGER** | Hard `DELETE FROM users` in SQL (row snapshot in `metadata` before cascades) |
+
+- **Read access:** `GET /admin/audit-events` — super admin only; paginated filters by action, source, date, actor/target user.
+- **PII:** Failed-login events store attempted email (abuse detection). Passwords, tokens, and credential fields are never stored in `metadata`.
+- **Retention:** No automatic purge in v1; optional `AUDIT_RETENTION_DAYS` + scheduled job can be added later.
+- **GDPR:** Soft deactivation retains account data; hard DB delete leaves a trigger archive row — disclose in privacy policy that security logs may outlive the account.
+- **Verification (manual):** In Supabase SQL editor, delete a disposable test user with `DELETE FROM users WHERE email = '…'`; confirm an `USER_DELETED_DB` row with `source = DB_TRIGGER` appears in `audit_events`.
 
 ## Deployment (Vercel)
 

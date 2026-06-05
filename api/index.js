@@ -1,6 +1,7 @@
 const serverless = require('serverless-http');
 const { validateConfig } = require('../server/lib/config');
 const { checkAuthRateLimit, checkProgressRateLimit, checkContactRateLimit } = require('../server/lib/rateLimitFast');
+const { buildRequestContext } = require('../server/lib/audit');
 
 let expressHandler;
 
@@ -85,9 +86,11 @@ module.exports = async (req, res) => {
     if (req.method === 'POST' && match(p, '/auth/login')) {
       if (!applyRateLimit(res, checkAuthRateLimit(req))) return;
       const body = await parseBody(req);
+      const ctx = buildRequestContext(req);
       const result = await require('../server/lib/fastAuth').login(
         (body.email || '').trim(),
-        body.password || ''
+        body.password || '',
+        ctx
       );
       return json(res, result.status, result.body);
     }
@@ -95,7 +98,7 @@ module.exports = async (req, res) => {
     if (req.method === 'POST' && match(p, '/auth/register')) {
       if (!applyRateLimit(res, checkAuthRateLimit(req))) return;
       const body = await parseBody(req);
-      const result = await require('../server/lib/fastAuth').register(body);
+      const result = await require('../server/lib/fastAuth').register(body, buildRequestContext(req));
       return json(res, result.status, result.body);
     }
 
@@ -134,7 +137,10 @@ module.exports = async (req, res) => {
           /* optional auth */
         }
       }
-      const result = await require('../server/lib/fastAuth').verifyEmail(body.token, { userId });
+      const result = await require('../server/lib/fastAuth').verifyEmail(body.token, {
+        userId,
+        auditCtx: buildRequestContext(req),
+      });
       return json(res, result.status, result.body);
     }
 
@@ -147,14 +153,20 @@ module.exports = async (req, res) => {
       const payload = require('jsonwebtoken').verify(h.slice(7), process.env.JWT_SECRET, {
         algorithms: ['HS256'],
       });
-      const result = await require('../server/lib/fastAuth').resendVerification(payload.userId);
+      const result = await require('../server/lib/fastAuth').resendVerification(
+        payload.userId,
+        buildRequestContext(req)
+      );
       return json(res, result.status, result.body);
     }
 
     if (req.method === 'POST' && match(p, '/auth/forgot-password')) {
       if (!applyRateLimit(res, checkAuthRateLimit(req))) return;
       const body = await parseBody(req);
-      const result = await require('../server/lib/fastAuth').forgotPassword(body.email);
+      const result = await require('../server/lib/fastAuth').forgotPassword(
+        body.email,
+        buildRequestContext(req)
+      );
       return json(res, result.status, result.body);
     }
 
@@ -163,7 +175,8 @@ module.exports = async (req, res) => {
       const body = await parseBody(req);
       const result = await require('../server/lib/fastAuth').resetPassword(
         body.token,
-        body.password
+        body.password,
+        buildRequestContext(req)
       );
       return json(res, result.status, result.body);
     }
@@ -171,7 +184,10 @@ module.exports = async (req, res) => {
     if (req.method === 'POST' && match(p, '/auth/google')) {
       if (!applyRateLimit(res, checkAuthRateLimit(req))) return;
       const body = await parseBody(req);
-      const result = await require('../server/lib/fastAuth').loginWithGoogle(body);
+      const result = await require('../server/lib/fastAuth').loginWithGoogle(
+        body,
+        buildRequestContext(req)
+      );
       return json(res, result.status, result.body);
     }
 
@@ -204,7 +220,8 @@ module.exports = async (req, res) => {
       const body = await parseBody(req);
       const result = await require('../server/lib/fastAuth').closeUserAccount(
         payload.userId,
-        body.password
+        body.password,
+        buildRequestContext(req)
       );
       return json(res, result.status, result.body);
     }

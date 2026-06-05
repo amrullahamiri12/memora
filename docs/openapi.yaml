@@ -1098,6 +1098,71 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
+  /admin/audit-events:
+    get:
+      tags: [Admin - Security]
+      summary: List audit events (super admin only)
+      description: Append-only security and admin action log. Filter by action, source, date range, or user ids.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: source
+          in: query
+          schema: { type: string, enum: [APP, DB_TRIGGER] }
+        - name: actorUserId
+          in: query
+          schema: { type: string }
+        - name: targetUserId
+          in: query
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        occurredAt: { type: string, format: date-time }
+                        source: { type: string, enum: [APP, DB_TRIGGER] }
+                        action: { type: string }
+                        actorUserId: { type: string, nullable: true }
+                        actorEmail: { type: string, nullable: true }
+                        actorRole: { type: string, nullable: true }
+                        entityType: { type: string, nullable: true }
+                        entityId: { type: string, nullable: true }
+                        targetUserId: { type: string, nullable: true }
+                        ipAddress: { type: string, nullable: true }
+                        userAgent: { type: string, nullable: true }
+                        metadata: { type: object, nullable: true }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  total: { type: integer }
+                  totalPages: { type: integer }
+        '403':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /admin/subjects:
     get:
       tags: [Admin - Subjects & Topics]

@@ -2,6 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const validate = require('../middleware/validate');
 const { submitContact } = require('../lib/contact');
+const { buildRequestContext } = require('../lib/audit');
 
 const router = express.Router();
 
@@ -19,7 +20,7 @@ router.post(
   validate,
   async (req, res) => {
     try {
-      const result = await submitContact(req.body);
+      const result = await submitContact(req.body, buildRequestContext(req));
       res.status(result.status).json(result.body);
     } catch (err) {
       console.error(err);

@@ -19,6 +19,7 @@ const {
   isUserActive,
 } = require('./authUser');
 const { closeAccount } = require('./userLifecycle');
+const { auditFire, AUDIT_ACTIONS, actorFromUser, userSnapshot } = require('./audit');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -50,10 +51,15 @@ async function findUserById(userId) {
   return rows[0] || null;
 }
 
-async function login(email, password) {
+async function login(email, password, ctx = {}) {
   const trimmedEmail = (email || '').trim().toLowerCase();
   const user = await findUserByEmail(trimmedEmail);
   if (!user) {
+    auditFire({
+      action: AUDIT_ACTIONS.AUTH_LOGIN_FAILED,
+      ...ctx,
+      metadata: { email: trimmedEmail, reason: 'user_not_found' },
+    });
     return { status: 401, body: { error: 'Invalid email or password' } };
   }
   if (user.deactivatedAt) {
@@ -61,18 +67,43 @@ async function login(email, password) {
   }
   if (!user.passwordHash) {
     if (user.googleId) {
+      auditFire({
+        action: AUDIT_ACTIONS.AUTH_LOGIN_FAILED,
+        ...ctx,
+        metadata: { email: trimmedEmail, reason: 'google_only' },
+      });
       return { status: 401, body: { error: 'This account uses Google sign-in' } };
     }
+    auditFire({
+      action: AUDIT_ACTIONS.AUTH_LOGIN_FAILED,
+      ...ctx,
+      metadata: { email: trimmedEmail, reason: 'invalid_credentials' },
+    });
     return { status: 401, body: { error: 'Invalid email or password' } };
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) return { status: 401, body: { error: 'Invalid email or password' } };
+  if (!valid) {
+    auditFire({
+      action: AUDIT_ACTIONS.AUTH_LOGIN_FAILED,
+      ...ctx,
+      metadata: { email: trimmedEmail, reason: 'invalid_credentials' },
+    });
+    return { status: 401, body: { error: 'Invalid email or password' } };
+  }
 
+  auditFire({
+    action: AUDIT_ACTIONS.AUTH_LOGIN_SUCCESS,
+    ...actorFromUser(user),
+    ...ctx,
+    entityType: 'user',
+    entityId: user.id,
+    targetUserId: user.id,
+  });
   return authSuccess(user);
 }
 
-async function register({ name, email, password, subjectIds }) {
+async function register({ name, email, password, subjectIds }, ctx = {}) {
   const trimmedName = (name || '').trim();
   const trimmedEmail = (email || '').trim().toLowerCase();
   const ids = (subjectIds || []).filter((id) => typeof id === 'string' && id.trim());
@@ -152,6 +183,15 @@ async function register({ name, email, password, subjectIds }) {
     if (!created.body.emailSent && created.body.emailConfigured) {
       created.body.emailWarning = emailSendFailureMessage(emailResult);
     }
+    auditFire({
+      action: AUDIT_ACTIONS.AUTH_REGISTER,
+      ...actorFromUser(rows[0]),
+      ...ctx,
+      entityType: 'user',
+      entityId: userId,
+      targetUserId: userId,
+      metadata: { emailSent: created.body.emailSent },
+    });
     return created;
   } catch (err) {
     await client.query('ROLLBACK');
@@ -161,7 +201,7 @@ async function register({ name, email, password, subjectIds }) {
   }
 }
 
-async function verifyEmail(token, { userId } = {}) {
+async function verifyEmail(token, { userId, auditCtx: ctx = {} } = {}) {
   if (!token || typeof token !== 'string') {
     return { status: 400, body: { error: 'Verification token is required' } };
   }
@@ -214,10 +254,18 @@ async function verifyEmail(token, { userId } = {}) {
      RETURNING ${USER_PUBLIC_COLUMNS}`,
     [rows[0].id]
   );
+  auditFire({
+    action: AUDIT_ACTIONS.AUTH_VERIFY_EMAIL,
+    ...actorFromUser(updated[0]),
+    ...ctx,
+    entityType: 'user',
+    entityId: updated[0].id,
+    targetUserId: updated[0].id,
+  });
   return authSuccess(updated[0]);
 }
 
-async function resendVerification(userId) {
+async function resendVerification(userId, ctx = {}) {
   const user = await findUserById(userId);
   if (!user) return { status: 401, body: { error: 'User not found' } };
   if (isGuestEmail(user.email)) {
@@ -250,13 +298,21 @@ async function resendVerification(userId) {
       },
     };
   }
+  auditFire({
+    action: AUDIT_ACTIONS.AUTH_RESEND_VERIFICATION,
+    ...actorFromUser(user),
+    ...ctx,
+    entityType: 'user',
+    entityId: user.id,
+    targetUserId: user.id,
+  });
   return {
     status: 200,
     body: { message: 'Verification email sent', emailConfigured: true, emailSent: true },
   };
 }
 
-async function forgotPassword(email) {
+async function forgotPassword(email, ctx = {}) {
   const trimmedEmail = (email || '').trim().toLowerCase();
   const generic = {
     status: 200,
@@ -275,10 +331,18 @@ async function forgotPassword(email) {
     [tokenHash, resetExpiry(), user.id]
   );
   await sendPasswordResetEmail(trimmedEmail, token);
+  auditFire({
+    action: AUDIT_ACTIONS.AUTH_FORGOT_PASSWORD,
+    ...ctx,
+    targetUserId: user.id,
+    entityType: 'user',
+    entityId: user.id,
+    metadata: { email: trimmedEmail },
+  });
   return generic;
 }
 
-async function resetPassword(token, password) {
+async function resetPassword(token, password, ctx = {}) {
   if (!token || typeof token !== 'string') {
     return { status: 400, body: { error: 'Reset token is required' } };
   }
@@ -306,10 +370,18 @@ async function resetPassword(token, password) {
      RETURNING ${USER_PUBLIC_COLUMNS}`,
     [passwordHash, rows[0].id]
   );
+  auditFire({
+    action: AUDIT_ACTIONS.AUTH_RESET_PASSWORD,
+    ...actorFromUser(updated[0]),
+    ...ctx,
+    entityType: 'user',
+    entityId: updated[0].id,
+    targetUserId: updated[0].id,
+  });
   return authSuccess(updated[0]);
 }
 
-async function loginWithGoogle({ credential, subjectIds }) {
+async function loginWithGoogle({ credential, subjectIds }, ctx = {}) {
   if (!credential) {
     return { status: 400, body: { error: 'Google credential is required' } };
   }
@@ -318,6 +390,11 @@ async function loginWithGoogle({ credential, subjectIds }) {
   try {
     profile = await verifyGoogleCredential(credential);
   } catch (err) {
+    auditFire({
+      action: AUDIT_ACTIONS.AUTH_GOOGLE_FAILED,
+      ...ctx,
+      metadata: { reason: err.message || 'verification_failed' },
+    });
     return { status: 401, body: { error: err.message || 'Google sign-in failed' } };
   }
 
@@ -329,6 +406,15 @@ async function loginWithGoogle({ credential, subjectIds }) {
     if (!isUserActive(byGoogle.rows[0])) {
       return deactivatedAccountResponse();
     }
+    auditFire({
+      action: AUDIT_ACTIONS.AUTH_LOGIN_SUCCESS,
+      ...actorFromUser(byGoogle.rows[0]),
+      ...ctx,
+      entityType: 'user',
+      entityId: byGoogle.rows[0].id,
+      targetUserId: byGoogle.rows[0].id,
+      metadata: { method: 'google' },
+    });
     return authSuccess(byGoogle.rows[0]);
   }
 
@@ -392,6 +478,15 @@ async function loginWithGoogle({ credential, subjectIds }) {
     await client.query('COMMIT');
     const result = authCreated(rows[0]);
     result.body.needsSubjectSetup = ids.length === 0;
+    auditFire({
+      action: AUDIT_ACTIONS.AUTH_REGISTER,
+      ...actorFromUser(rows[0]),
+      ...ctx,
+      entityType: 'user',
+      entityId: userId,
+      targetUserId: userId,
+      metadata: { method: 'google' },
+    });
     return result;
   } catch (err) {
     await client.query('ROLLBACK');
@@ -408,8 +503,8 @@ async function me(userId) {
   return { status: 200, body: { user: publicUser(user) } };
 }
 
-async function closeUserAccount(userId, password) {
-  return closeAccount(userId, password);
+async function closeUserAccount(userId, password, ctx = {}) {
+  return closeAccount(userId, password, ctx);
 }
 
 function authConfig() {

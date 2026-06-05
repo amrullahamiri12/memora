@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { isStaff } from '../utils/roles';
+import { isStaff, isSuperAdmin } from '../utils/roles';
 import { useStudentPreview } from '../hooks/useStudentPreview';
 import {
   disableStudentView,
@@ -100,6 +100,7 @@ export default function Layout({ children }) {
                       navLink(item.to, item.label, item.exact)
                     )
                   )}
+                  {isSuperAdmin(user?.role) && navLink('/admin/audit', 'Audit log')}
                   {navLink('/account', 'Account')}
                   <button
                     type="button"

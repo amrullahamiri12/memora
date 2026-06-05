@@ -33,6 +33,11 @@ enum QuestionType {
   FILL_BLANK
 }
 
+enum AuditSource {
+  APP
+  DB_TRIGGER
+}
+
 model User {
   id                        String              @id @default(cuid())
   name                      String
@@ -127,4 +132,27 @@ model UserDailyPractice {
 
   @@unique([userId, date])
   @@map("user_daily_practice")
+}
+
+model AuditEvent {
+  id           String      @id @default(cuid())
+  occurredAt   DateTime    @default(now()) @map("occurred_at")
+  source       AuditSource @default(APP)
+  action       String
+  actorUserId  String?     @map("actor_user_id")
+  actorEmail   String?     @map("actor_email")
+  actorRole    String?     @map("actor_role")
+  entityType   String?     @map("entity_type")
+  entityId     String?     @map("entity_id")
+  targetUserId String?     @map("target_user_id")
+  ipAddress    String?     @map("ip_address")
+  userAgent    String?     @map("user_agent")
+  metadata     Json?
+
+  @@index([occurredAt(sort: Desc)])
+  @@index([action])
+  @@index([actorUserId])
+  @@index([targetUserId])
+  @@index([entityType, entityId])
+  @@map("audit_events")
 }

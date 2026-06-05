@@ -19,6 +19,14 @@ const {
 const { deactivateUser, reactivateUser } = require('./userLifecycle');
 const { parseUserGroupFilter } = require('./adminUserFilters');
 const { isLearnerViewRequest, shouldRestrictToEnrolledSubjects } = require('./learnerView');
+const {
+  auditFire,
+  AUDIT_ACTIONS,
+  actorFromUser,
+  userSnapshot,
+  buildRequestContextFromHeaders,
+  listAuditEvents,
+} = require('./audit');
 
 const VALID_ROLES = ['USER', 'ADMIN', 'SUPER_ADMIN'];
 
@@ -137,7 +145,7 @@ async function adminSubjects() {
   return { status: 200, body: Array.from(map.values()) };
 }
 
-async function createAdminSubject(body) {
+async function createAdminSubject(body, ctx = {}) {
   const name = (body?.name || '').trim();
   if (!name) return { status: 400, body: { error: 'Subject name is required' } };
 
@@ -148,15 +156,27 @@ async function createAdminSubject(body) {
 
   const id = randomUUID();
   await db.query('INSERT INTO subjects (id, name) VALUES ($1, $2)', [id, name]);
+  auditFire({
+    action: AUDIT_ACTIONS.SUBJECT_CREATED,
+    ...ctx,
+    entityType: 'subject',
+    entityId: id,
+    metadata: { name },
+  });
   return {
     status: 201,
     body: { id, name, topicCount: 0, cardCount: 0, topics: [] },
   };
 }
 
-async function updateAdminSubject(subjectId, body) {
+async function updateAdminSubject(subjectId, body, ctx = {}) {
   const name = (body?.name || '').trim();
   if (!name) return { status: 400, body: { error: 'Subject name is required' } };
+
+  const before = await db.query('SELECT id, name FROM subjects WHERE id = $1 LIMIT 1', [subjectId]);
+  if (!before.rows[0]) {
+    return { status: 404, body: { error: 'Subject not found' } };
+  }
 
   const conflict = await db.query(
     'SELECT id FROM subjects WHERE name = $1 AND id <> $2 LIMIT 1',
@@ -170,21 +190,33 @@ async function updateAdminSubject(subjectId, body) {
     'UPDATE subjects SET name = $1 WHERE id = $2 RETURNING id, name',
     [name, subjectId]
   );
-  if (!result.rows[0]) {
-    return { status: 404, body: { error: 'Subject not found' } };
-  }
+  auditFire({
+    action: AUDIT_ACTIONS.SUBJECT_UPDATED,
+    ...ctx,
+    entityType: 'subject',
+    entityId: subjectId,
+    metadata: { before: before.rows[0], after: result.rows[0] },
+  });
   return { status: 200, body: result.rows[0] };
 }
 
-async function deleteAdminSubject(subjectId) {
+async function deleteAdminSubject(subjectId, ctx = {}) {
+  const before = await db.query('SELECT id, name FROM subjects WHERE id = $1 LIMIT 1', [subjectId]);
   const result = await db.query('DELETE FROM subjects WHERE id = $1 RETURNING id', [subjectId]);
   if (!result.rows[0]) {
     return { status: 404, body: { error: 'Subject not found' } };
   }
+  auditFire({
+    action: AUDIT_ACTIONS.SUBJECT_DELETED,
+    ...ctx,
+    entityType: 'subject',
+    entityId: subjectId,
+    metadata: { before: before.rows[0] },
+  });
   return { status: 200, body: { message: 'Subject deleted' } };
 }
 
-async function createAdminTopic(body) {
+async function createAdminTopic(body, ctx = {}) {
   const subjectId = body?.subjectId;
   const name = (body?.name || '').trim();
   if (!subjectId) return { status: 400, body: { error: 'Subject ID is required' } };
@@ -209,10 +241,17 @@ async function createAdminTopic(body) {
     subjectId,
     name,
   ]);
+  auditFire({
+    action: AUDIT_ACTIONS.TOPIC_CREATED,
+    ...ctx,
+    entityType: 'topic',
+    entityId: id,
+    metadata: { name, subjectId },
+  });
   return { status: 201, body: { id, name, subjectId, cardCount: 0 } };
 }
 
-async function updateAdminTopic(topicId, body) {
+async function updateAdminTopic(topicId, body, ctx = {}) {
   const name = (body?.name || '').trim();
   if (!name) return { status: 400, body: { error: 'Topic name is required' } };
 
@@ -236,14 +275,32 @@ async function updateAdminTopic(topicId, body) {
     'UPDATE topics SET name = $1 WHERE id = $2 RETURNING id, name, subject_id AS "subjectId"',
     [name, topicId]
   );
+  auditFire({
+    action: AUDIT_ACTIONS.TOPIC_UPDATED,
+    ...ctx,
+    entityType: 'topic',
+    entityId: topicId,
+    metadata: { before: topic, after: result.rows[0] },
+  });
   return { status: 200, body: result.rows[0] };
 }
 
-async function deleteAdminTopic(topicId) {
+async function deleteAdminTopic(topicId, ctx = {}) {
+  const before = await db.query(
+    'SELECT id, name, subject_id AS "subjectId" FROM topics WHERE id = $1 LIMIT 1',
+    [topicId]
+  );
   const result = await db.query('DELETE FROM topics WHERE id = $1 RETURNING id', [topicId]);
   if (!result.rows[0]) {
     return { status: 404, body: { error: 'Topic not found' } };
   }
+  auditFire({
+    action: AUDIT_ACTIONS.TOPIC_DELETED,
+    ...ctx,
+    entityType: 'topic',
+    entityId: topicId,
+    metadata: { before: before.rows[0] },
+  });
   return { status: 200, body: { message: 'Topic deleted' } };
 }
 
@@ -322,14 +379,14 @@ async function countOtherSuperAdmins(excludeUserId) {
   return countRes.rows[0]?.total ?? 0;
 }
 
-async function updateAdminUser(actor, targetId, body) {
+async function updateAdminUser(actor, targetId, body, ctx = {}) {
   const validated = validateUserPayload(body, { requirePassword: false });
   if (validated.error) return { status: 400, body: { error: validated.error } };
 
   const { name, email, role, password } = validated;
 
   const { rows } = await db.query(
-    'SELECT id, role FROM users WHERE id = $1 LIMIT 1',
+    'SELECT id, name, email, role FROM users WHERE id = $1 LIMIT 1',
     [targetId]
   );
   const existing = rows[0];
@@ -368,6 +425,15 @@ async function updateAdminUser(actor, targetId, body) {
        RETURNING id, name, email, role, created_at AS "createdAt"`,
       [name, email, role, passwordHash, targetId]
     );
+    auditFire({
+      action: AUDIT_ACTIONS.ADMIN_USER_UPDATED,
+      ...actorFromUser(actor),
+      ...ctx,
+      entityType: 'user',
+      entityId: targetId,
+      targetUserId: targetId,
+      metadata: { before: userSnapshot(existing), after: userSnapshot(updated[0]), passwordChanged: true },
+    });
     return { status: 200, body: updated[0] };
   }
 
@@ -377,10 +443,19 @@ async function updateAdminUser(actor, targetId, body) {
      RETURNING id, name, email, role, created_at AS "createdAt"`,
     [name, email, role, targetId]
   );
+  auditFire({
+    action: AUDIT_ACTIONS.ADMIN_USER_UPDATED,
+    ...actorFromUser(actor),
+    ...ctx,
+    entityType: 'user',
+    entityId: targetId,
+    targetUserId: targetId,
+    metadata: { before: userSnapshot(existing), after: userSnapshot(updated[0]) },
+  });
   return { status: 200, body: updated[0] };
 }
 
-async function createAdminUser(actor, body) {
+async function createAdminUser(actor, body, ctx = {}) {
   const validated = validateUserPayload(body, { requirePassword: true });
   if (validated.error) return { status: 400, body: { error: validated.error } };
 
@@ -407,6 +482,16 @@ async function createAdminUser(actor, body) {
   if (role === 'USER' && Array.isArray(body.subjectIds) && body.subjectIds.length > 0) {
     await enrollUserInSubjectsFast(userId, body.subjectIds);
   }
+
+  auditFire({
+    action: AUDIT_ACTIONS.ADMIN_USER_CREATED,
+    ...actorFromUser(actor),
+    ...ctx,
+    entityType: 'user',
+    entityId: userId,
+    targetUserId: userId,
+    metadata: { after: userSnapshot(rows[0]) },
+  });
 
   return { status: 201, body: rows[0] };
 }
@@ -554,11 +639,11 @@ async function subjectsEnroll(user, body, learnerView = false) {
   };
 }
 
-async function deactivateAdminUser(actor, targetId) {
-  return deactivateUser(actor, targetId);
+async function deactivateAdminUser(actor, targetId, ctx = {}) {
+  return deactivateUser(actor, targetId, ctx);
 }
 
-async function verifyAdminUserEmail(actor, targetId) {
+async function verifyAdminUserEmail(actor, targetId, ctx = {}) {
   if (actor.role !== 'SUPER_ADMIN') {
     return { status: 403, body: { error: 'Super admin access required' } };
   }
@@ -572,6 +657,15 @@ async function verifyAdminUserEmail(actor, targetId) {
     [targetId]
   );
   if (!rows[0]) return { status: 404, body: { error: 'User not found' } };
+  auditFire({
+    action: AUDIT_ACTIONS.ADMIN_VERIFY_EMAIL,
+    ...actorFromUser(actor),
+    ...ctx,
+    entityType: 'user',
+    entityId: targetId,
+    targetUserId: targetId,
+    metadata: { after: userSnapshot(rows[0]) },
+  });
   return { status: 200, body: { message: 'Email marked as verified', user: publicUser(rows[0]) } };
 }
 
@@ -940,6 +1034,7 @@ async function profile(user, query) {
 
 /** Returns { status, body } or null if this handler does not apply. */
 async function tryHandle(method, path, query, authHeader, body = null, requestHeaders = {}) {
+  const auditCtx = buildRequestContextFromHeaders(requestHeaders);
   const learnerView = isLearnerViewRequest(requestHeaders);
   if (method === 'POST' && match(path, '/admin/flashcards/import')) {
     const auth = await requireUser(authHeader);
@@ -958,6 +1053,12 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
     try {
       const { importFlashcardsFromCsvFast } = require('./csvImportFast');
       const results = await importFlashcardsFromCsvFast(csv);
+      auditFire({
+        action: AUDIT_ACTIONS.FLASHCARD_CSV_IMPORTED,
+        ...actorFromUser(auth.user),
+        ...auditCtx,
+        metadata: results,
+      });
       return { status: 200, body: results };
     } catch (err) {
       return { status: 400, body: { error: err.message || 'Invalid CSV' } };
@@ -972,7 +1073,7 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
       if (!isStaff(auth.user.role)) {
         return { status: 403, body: { error: 'Admin access required' } };
       }
-      return verifyAdminUserEmail(auth.user, verifyTargetId);
+      return verifyAdminUserEmail(auth.user, verifyTargetId, auditCtx);
     }
 
     const reactivateTargetId = parseAdminUserReactivatePath(path);
@@ -982,7 +1083,7 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
       if (!isStaff(auth.user.role)) {
         return { status: 403, body: { error: 'Admin access required' } };
       }
-      return reactivateUser(auth.user, reactivateTargetId);
+      return reactivateUser(auth.user, reactivateTargetId, auditCtx);
     }
   }
 
@@ -1005,9 +1106,9 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
       }
       if (method === 'PUT') {
         if (!body) return { status: 400, body: { error: 'Request body required' } };
-        return updateAdminUser(auth.user, targetId, body);
+        return updateAdminUser(auth.user, targetId, body, auditCtx);
       }
-      return deactivateAdminUser(auth.user, targetId);
+      return deactivateAdminUser(auth.user, targetId, auditCtx);
     }
   }
 
@@ -1018,13 +1119,13 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
       return { status: 403, body: { error: 'Admin access required' } };
     }
     if (!body) return { status: 400, body: { error: 'Request body required' } };
-    return createAdminUser(auth.user, body);
+    return createAdminUser(auth.user, body, auditCtx);
   }
 
   if (method === 'POST' && contactPath(path)) {
     if (!body) return { status: 400, body: { error: 'Request body required' } };
     const { submitContact } = require('./contact');
-    const result = await submitContact(body);
+    const result = await submitContact(body, auditCtx);
     return { status: result.status, body: result.body };
   }
 
@@ -1049,7 +1150,7 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
       return { status: 403, body: { error: 'Admin access required' } };
     }
     if (!body) return { status: 400, body: { error: 'Request body required' } };
-    return createAdminSubject(body);
+    return createAdminSubject(body, auditCtx);
   }
 
   const adminSubjectId = parseAdminSubjectId(path);
@@ -1061,9 +1162,9 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
     }
     if (method === 'PUT') {
       if (!body) return { status: 400, body: { error: 'Request body required' } };
-      return updateAdminSubject(adminSubjectId, body);
+      return updateAdminSubject(adminSubjectId, body, auditCtx);
     }
-    return deleteAdminSubject(adminSubjectId);
+    return deleteAdminSubject(adminSubjectId, auditCtx);
   }
 
   if (method === 'POST' && adminTopicsListPath(path)) {
@@ -1073,7 +1174,7 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
       return { status: 403, body: { error: 'Admin access required' } };
     }
     if (!body) return { status: 400, body: { error: 'Request body required' } };
-    return createAdminTopic(body);
+    return createAdminTopic(body, auditCtx);
   }
 
   const adminTopicId = parseAdminTopicId(path);
@@ -1085,9 +1186,9 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
     }
     if (method === 'PUT') {
       if (!body) return { status: 400, body: { error: 'Request body required' } };
-      return updateAdminTopic(adminTopicId, body);
+      return updateAdminTopic(adminTopicId, body, auditCtx);
     }
-    return deleteAdminTopic(adminTopicId);
+    return deleteAdminTopic(adminTopicId, auditCtx);
   }
 
   if (method !== 'GET') return null;
@@ -1106,6 +1207,23 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
   if (auth.error) return auth.error;
   const { user } = auth;
 
+  if (adminAuditEventsPath(path)) {
+    if (user.role !== 'SUPER_ADMIN') {
+      return { status: 403, body: { error: 'Super admin access required' } };
+    }
+    const result = await listAuditEvents({
+      page: query.page ? Number(query.page) : 1,
+      limit: query.limit ? Number(query.limit) : 50,
+      action: query.action || null,
+      source: query.source || null,
+      actorUserId: query.actorUserId || null,
+      targetUserId: query.targetUserId || null,
+      from: query.from || null,
+      to: query.to || null,
+    });
+    return { status: 200, body: result };
+  }
+
   const reportsKind = parseAdminReportsPath(path);
   if (reportsKind) {
     if (!isStaff(user.role)) {
@@ -1118,6 +1236,12 @@ async function tryHandle(method, path, query, authHeader, body = null, requestHe
     if (reportsKind === 'learners') {
       const result = await reports.getLearners(query);
       if (result.csv) {
+        auditFire({
+          action: AUDIT_ACTIONS.FLASHCARD_CSV_EXPORTED,
+          ...actorFromUser(user),
+          ...auditCtx,
+          metadata: { kind: 'learners', filename: result.filename },
+        });
         return { status: 200, csv: result.csv, filename: result.filename };
       }
       return { status: 200, body: result };
@@ -1234,6 +1358,11 @@ function parseAdminUserVerifyPath(path) {
 function parseAdminUserReactivatePath(path) {
   const m = path.match(/\/admin\/users\/([^/]+)\/reactivate\/?$/);
   return m ? m[1] : null;
+}
+
+function adminAuditEventsPath(path) {
+  const normalized = path.replace(/\/$/, '');
+  return normalized === '/admin/audit-events' || normalized === '/api/admin/audit-events';
 }
 
 function parseAdminReportsPath(path) {

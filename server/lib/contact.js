@@ -1,4 +1,5 @@
 const { sendContactEmail } = require('./email');
+const { auditFire, AUDIT_ACTIONS } = require('./audit');
 
 function validateContactBody(body) {
   const name = typeof body?.name === 'string' ? body.name.trim() : '';
@@ -25,7 +26,7 @@ function validateContactBody(body) {
   return { ok: true, data: { name, email, message } };
 }
 
-async function submitContact(body) {
+async function submitContact(body, ctx = {}) {
   const validated = validateContactBody(body);
   if (!validated.ok) return validated;
 
@@ -64,6 +65,12 @@ async function submitContact(body) {
       body: { error: 'Could not send your message. Try again later.' },
     };
   }
+
+  auditFire({
+    action: AUDIT_ACTIONS.CONTACT_FORM_SUBMITTED,
+    ...ctx,
+    metadata: { senderEmail: validated.data.email, senderName: validated.data.name },
+  });
 
   return {
     ok: true,

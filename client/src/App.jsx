@@ -21,6 +21,7 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminReportsLearners from './pages/admin/AdminReportsLearners';
 import AdminReportsContent from './pages/admin/AdminReportsContent';
+import AdminAudit from './pages/admin/AdminAudit';
 import Landing from './pages/Landing';
 import { isGuestUser } from './utils/guest';
 import GuestSetupPage from './pages/GuestSetupPage';
@@ -223,6 +224,14 @@ function AppRoutes() {
             element={
               <AdminRoute>
                 <AdminUsers />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/audit"
+            element={
+              <AdminRoute>
+                <AdminAudit />
               </AdminRoute>
             }
           />

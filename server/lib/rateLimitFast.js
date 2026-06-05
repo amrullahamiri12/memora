@@ -28,16 +28,35 @@ function check(key, { windowMs, max }) {
   return { allowed: true };
 }
 
+function auditRateLimit(req, scope) {
+  try {
+    const { auditFire, AUDIT_ACTIONS, buildRequestContext } = require('./audit');
+    auditFire({
+      action: AUDIT_ACTIONS.RATE_LIMIT_HIT,
+      ...buildRequestContext(req),
+      metadata: { scope },
+    });
+  } catch {
+    /* ignore audit errors */
+  }
+}
+
 function checkAuthRateLimit(req) {
-  return check(`auth:${clientIp(req)}`, { windowMs: 15 * 60 * 1000, max: 40 });
+  const result = check(`auth:${clientIp(req)}`, { windowMs: 15 * 60 * 1000, max: 40 });
+  if (!result.allowed) auditRateLimit(req, 'auth');
+  return result;
 }
 
 function checkProgressRateLimit(req) {
-  return check(`progress:${clientIp(req)}`, { windowMs: 60 * 1000, max: 150 });
+  const result = check(`progress:${clientIp(req)}`, { windowMs: 60 * 1000, max: 150 });
+  if (!result.allowed) auditRateLimit(req, 'progress');
+  return result;
 }
 
 function checkContactRateLimit(req) {
-  return check(`contact:${clientIp(req)}`, { windowMs: 60 * 60 * 1000, max: 5 });
+  const result = check(`contact:${clientIp(req)}`, { windowMs: 60 * 60 * 1000, max: 5 });
+  if (!result.allowed) auditRateLimit(req, 'contact');
+  return result;
 }
 
 module.exports = { checkAuthRateLimit, checkProgressRateLimit, checkContactRateLimit, clientIp };
