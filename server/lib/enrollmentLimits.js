@@ -48,7 +48,7 @@ async function getEnrollmentQuota(userId) {
 function createLimitError(spotsRemaining, requested) {
   const err = new Error(
     spotsRemaining === 0
-      ? `You can study up to ${MAX_ACTIVE_SUBJECTS} subjects at a time. Master your current subjects before adding more.`
+      ? `You can study up to ${MAX_ACTIVE_SUBJECTS} subjects at a time. Master a subject or leave one from your dashboard to add another.`
       : `You can add ${spotsRemaining} more subject${spotsRemaining === 1 ? '' : 's'} right now (maximum ${MAX_ACTIVE_SUBJECTS} active at a time).`
   );
   err.status = 422;

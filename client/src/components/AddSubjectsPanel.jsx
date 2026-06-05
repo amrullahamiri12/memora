@@ -6,7 +6,11 @@ import SubjectPicker from './SubjectPicker';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
 import { isStaff } from '../utils/roles';
-import { deriveEnrollmentQuota, MAX_ACTIVE_SUBJECTS } from '../utils/enrollmentQuota';
+import {
+  AT_ACTIVE_LIMIT_HINT,
+  deriveEnrollmentQuota,
+  MAX_ACTIVE_SUBJECTS,
+} from '../utils/enrollmentQuota';
 
 async function fetchAvailableSubjects() {
   try {
@@ -117,7 +121,7 @@ export default function AddSubjectsPanel({
         <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
           {enrollmentLimitApplies && enrollmentQuota.spotsRemaining === 0
-            ? `You are at the ${MAX_ACTIVE_SUBJECTS}-subject active limit. Master your current subjects to unlock more.`
+            ? `You are at the ${MAX_ACTIVE_SUBJECTS}-subject active limit. ${AT_ACTIVE_LIMIT_HINT}`
             : 'No subjects are set up yet. Ask an admin to add subjects and flashcards.'}
         </p>
       </Card>
@@ -135,7 +139,7 @@ export default function AddSubjectsPanel({
                 ? `Select up to ${MAX_ACTIVE_SUBJECTS} subjects to get started`
                 : 'Select one or more subjects to get started'
               : enrollmentLimitApplies && enrollmentQuota.spotsRemaining === 0
-                ? `Master your current subjects to unlock more (max ${MAX_ACTIVE_SUBJECTS} active)`
+                ? `At the ${MAX_ACTIVE_SUBJECTS}-subject limit. ${AT_ACTIVE_LIMIT_HINT}`
                 : enrollmentLimitApplies
                   ? `Expand what you study — ${available.length} available · ${enrollmentQuota.spotsRemaining} active slot${enrollmentQuota.spotsRemaining === 1 ? '' : 's'} left`
                   : `Expand what you study — ${available.length} available`}
@@ -157,7 +161,7 @@ export default function AddSubjectsPanel({
         <div className="mt-5">
           {enrollmentLimitApplies && enrollmentQuota.spotsRemaining === 0 && (
             <Alert type="warning">
-              You already have {MAX_ACTIVE_SUBJECTS} active subjects. Master one to add another.
+              You already have {MAX_ACTIVE_SUBJECTS} active subjects. {AT_ACTIVE_LIMIT_HINT}
             </Alert>
           )}
           {error && <Alert>{error}</Alert>}
