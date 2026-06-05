@@ -88,6 +88,7 @@ export default function Layout({ children }) {
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {staff && !studentView ? (
                 <>
+                  {navLink('/home', 'Home', true)}
                   {ADMIN_HEADER_NAV.map((item) =>
                     item.type === 'group' ? (
                       <AdminNavDropdown
@@ -110,6 +111,7 @@ export default function Layout({ children }) {
                 </>
               ) : staff && studentView ? (
                 <>
+                  {navLink('/home', 'Home', true)}
                   <Link
                     to={studentPath('/dashboard')}
                     className={`nav-link ${isActive('/dashboard') ? 'nav-link-active' : ''}`}
@@ -133,6 +135,7 @@ export default function Layout({ children }) {
                 </>
               ) : (
                 <>
+                  {navLink('/home', 'Home', true)}
                   {navLink('/dashboard', 'Dashboard')}
                   <Link
                     to="/profile"

@@ -1,3 +1,5 @@
+import { featureGuidePath } from './featureGuides';
+
 /** Hero carousel — same slides in light and dark mode */
 export const LANDING_HERO_SLIDES = [
   {
@@ -50,6 +52,7 @@ export const LANDING_FEATURES = [
   {
     title: 'Learn mode',
     text: 'Mixed quizzes with instant feedback across question types.',
+    learnMoreTo: featureGuidePath('learn-mode'),
     image: '/landing/feature-learn.webp',
     alt: 'Person taking notes while learning on a laptop',
     photographer: 'Christina @ wocintechchat.com',
@@ -58,6 +61,7 @@ export const LANDING_FEATURES = [
   {
     title: 'Flashcards',
     text: 'Flip cards and rate what you know — progress follows you.',
+    learnMoreTo: featureGuidePath('flashcards'),
     image: '/landing/feature-flashcards.webp',
     alt: 'Desk with laptop and study materials for focused review',
     photographer: 'Scott Graham',
@@ -66,6 +70,7 @@ export const LANDING_FEATURES = [
   {
     title: 'Streaks & profile',
     text: 'Daily practice tracking and per-topic study stats.',
+    learnMoreTo: featureGuidePath('streaks-profile'),
     image: '/landing/feature-streaks.webp',
     alt: 'Planner and calendar for tracking daily study habits',
     photographer: 'Glenn Carstens-Peters',

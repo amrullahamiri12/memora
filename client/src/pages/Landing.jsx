@@ -40,6 +40,7 @@ export default function Landing() {
                 text={item.text}
                 image={item.image}
                 alt={item.alt}
+                learnMoreTo={item.learnMoreTo}
                 staggerClass={FEATURE_STAGGER[index] ?? 'landing-stagger-4'}
               />
             ))}

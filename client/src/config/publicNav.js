@@ -22,6 +22,7 @@ export const FOOTER_NAV_SECTIONS = [
     title: 'Company',
     links: [
       { label: 'About', to: '/about' },
+      { label: 'How it works', to: '/features' },
       { label: 'Contact', to: '/contact' },
     ],
   },

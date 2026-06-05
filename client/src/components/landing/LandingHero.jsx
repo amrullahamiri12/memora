@@ -1,11 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { useStudentPreview } from '../../hooks/useStudentPreview';
+import { getAppHomePath } from '../../utils/appHome';
+import { isStaff } from '../../utils/roles';
 import Button from '../ui/Button';
 import ContinueAsGuestButton from '../ContinueAsGuestButton';
 import { LANDING_HERO_INTERVAL_MS, LANDING_HERO_SLIDES } from '../../config/landingContent';
 
 export default function LandingHero() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const { user } = useAuth();
+  const studentPreview = useStudentPreview();
+  const staff = isStaff(user?.role);
+  const inStudentPreview = staff && studentPreview;
+  const appHomePath = getAppHomePath(user, inStudentPreview);
+  const appHomeLabel =
+    staff && !inStudentPreview ? 'Go to Admin' : 'Go to Dashboard';
+
   const slideCount = LANDING_HERO_SLIDES.length;
   const activeSlide = LANDING_HERO_SLIDES[activeIndex];
 
@@ -64,27 +76,45 @@ export default function LandingHero() {
           </p>
 
           <div className="mt-8 flex max-w-md flex-col gap-3.5 sm:max-w-none">
-            <Link to="/register" className="w-full sm:w-auto">
-              <Button className="min-w-[10rem] w-full px-8 py-3.5 shadow-lg sm:w-auto">
-                Get started
-              </Button>
-            </Link>
-            <ContinueAsGuestButton
-              variant="link"
-              className="w-full sm:w-auto"
-              buttonClassName="landing-hero-link text-base sm:text-lg"
-              showDescription={false}
-            />
-            <p className="landing-hero-muted text-sm leading-relaxed sm:text-base">
-              Try the app with no sign-up — you&apos;ll choose subjects next. Create an account later to
-              keep progress.
-            </p>
-            <p className="landing-hero-muted text-sm sm:text-base">
-              Already have an account?{' '}
-              <Link to="/login" className="landing-hero-link text-base font-semibold hover:underline">
-                Sign in
-              </Link>
-            </p>
+            {user ? (
+              <>
+                <Link to={appHomePath} className="w-full sm:w-auto">
+                  <Button className="min-w-[10rem] w-full px-8 py-3.5 shadow-lg sm:w-auto">
+                    {appHomeLabel}
+                  </Button>
+                </Link>
+                <p className="landing-hero-muted text-sm leading-relaxed sm:text-base">
+                  You&apos;re signed in as {user.name}. Continue studying or browse features below.
+                </p>
+              </>
+            ) : (
+              <>
+                <Link to="/register" className="w-full sm:w-auto">
+                  <Button className="min-w-[10rem] w-full px-8 py-3.5 shadow-lg sm:w-auto">
+                    Get started
+                  </Button>
+                </Link>
+                <ContinueAsGuestButton
+                  variant="link"
+                  className="w-full sm:w-auto"
+                  buttonClassName="landing-hero-link text-base sm:text-lg"
+                  showDescription={false}
+                />
+                <p className="landing-hero-muted text-sm leading-relaxed sm:text-base">
+                  Try the app with no sign-up — you&apos;ll choose subjects next. Create an account
+                  later to keep progress.
+                </p>
+                <p className="landing-hero-muted text-sm sm:text-base">
+                  Already have an account?{' '}
+                  <Link
+                    to="/login"
+                    className="landing-hero-link text-base font-semibold hover:underline"
+                  >
+                    Sign in
+                  </Link>
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>

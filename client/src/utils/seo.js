@@ -16,6 +16,12 @@ const ROUTE_META = {
     index: true,
     jsonLd: true,
   },
+  '/home': {
+    title: 'Memora — Study flashcards, quizzes & tests',
+    description:
+      'Study smarter with Memora. Enroll in subjects, practice with flashcards and quizzes, and track mastery and streaks over time.',
+    index: false,
+  },
   '/login': {
     title: 'Sign in — Memora',
     description: 'Sign in to Memora to continue studying your enrolled subjects.',
@@ -30,6 +36,12 @@ const ROUTE_META = {
     title: 'About — Memora',
     description:
       'Memora, cultivate your mind — adaptive flashcards, quizzes, and progress tracking from Willow Team LLC.',
+    index: true,
+  },
+  '/features': {
+    title: 'How Memora works — Memora',
+    description:
+      'Learn how Memora learn mode, flashcards, and streak tracking help you study smarter and track progress.',
     index: true,
   },
   '/contact': {
