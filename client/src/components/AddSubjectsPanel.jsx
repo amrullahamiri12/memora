@@ -3,7 +3,9 @@ import Card from './ui/Card';
 import Button from './ui/Button';
 import Alert from './ui/Alert';
 import SubjectPicker from './SubjectPicker';
+import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
+import { isStaff } from '../utils/roles';
 import { deriveEnrollmentQuota, MAX_ACTIVE_SUBJECTS } from '../utils/enrollmentQuota';
 
 async function fetchAvailableSubjects() {
@@ -31,6 +33,8 @@ export default function AddSubjectsPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const { user } = useAuth();
+  const enrollmentLimitApplies = Boolean(user && !isStaff(user.role));
 
   const load = () => {
     setLoading(true);
@@ -52,7 +56,14 @@ export default function AddSubjectsPanel({
     if (defaultExpanded) setExpanded(true);
   }, [defaultExpanded]);
 
-  const enrollmentQuota = deriveEnrollmentQuota(enrolledSubjects);
+  const enrollmentQuota = enrollmentLimitApplies
+    ? deriveEnrollmentQuota(enrolledSubjects)
+    : null;
+  const maxSelectable = enrollmentLimitApplies
+    ? defaultExpanded
+      ? MAX_ACTIVE_SUBJECTS
+      : enrollmentQuota.spotsRemaining
+    : null;
 
   const handleEnroll = async () => {
     if (selectedIds.length === 0) {
@@ -105,7 +116,7 @@ export default function AddSubjectsPanel({
       <Card className="mb-8 p-5">
         <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
-          {enrollmentQuota.spotsRemaining === 0
+          {enrollmentLimitApplies && enrollmentQuota.spotsRemaining === 0
             ? `You are at the ${MAX_ACTIVE_SUBJECTS}-subject active limit. Master your current subjects to unlock more.`
             : 'No subjects are set up yet. Ask an admin to add subjects and flashcards.'}
         </p>
@@ -120,10 +131,14 @@ export default function AddSubjectsPanel({
           <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
           <p className="text-sm text-[var(--text-muted)]">
             {defaultExpanded
-              ? `Select up to ${MAX_ACTIVE_SUBJECTS} subjects to get started`
-              : enrollmentQuota.spotsRemaining > 0
-                ? `Expand what you study — ${available.length} available · ${enrollmentQuota.spotsRemaining} active slot${enrollmentQuota.spotsRemaining === 1 ? '' : 's'} left`
-                : `Master your current subjects to unlock more (max ${MAX_ACTIVE_SUBJECTS} active)`}
+              ? enrollmentLimitApplies
+                ? `Select up to ${MAX_ACTIVE_SUBJECTS} subjects to get started`
+                : 'Select one or more subjects to get started'
+              : enrollmentLimitApplies && enrollmentQuota.spotsRemaining === 0
+                ? `Master your current subjects to unlock more (max ${MAX_ACTIVE_SUBJECTS} active)`
+                : enrollmentLimitApplies
+                  ? `Expand what you study — ${available.length} available · ${enrollmentQuota.spotsRemaining} active slot${enrollmentQuota.spotsRemaining === 1 ? '' : 's'} left`
+                  : `Expand what you study — ${available.length} available`}
           </p>
         </div>
         {!defaultExpanded && (
@@ -140,7 +155,7 @@ export default function AddSubjectsPanel({
 
       {(expanded || defaultExpanded) && (
         <div className="mt-5">
-          {enrollmentQuota.spotsRemaining === 0 && (
+          {enrollmentLimitApplies && enrollmentQuota.spotsRemaining === 0 && (
             <Alert type="warning">
               You already have {MAX_ACTIVE_SUBJECTS} active subjects. Master one to add another.
             </Alert>
@@ -151,13 +166,16 @@ export default function AddSubjectsPanel({
             selectedIds={selectedIds}
             onChange={setSelectedIds}
             disabled={saving}
-            maxSelectable={defaultExpanded ? MAX_ACTIVE_SUBJECTS : enrollmentQuota.spotsRemaining}
+            maxSelectable={maxSelectable}
           />
           <Button
             type="button"
             className="mt-4 w-full sm:w-auto"
             loading={saving}
-            disabled={selectedIds.length === 0 || (!defaultExpanded && enrollmentQuota.spotsRemaining === 0)}
+            disabled={
+              selectedIds.length === 0 ||
+              (enrollmentLimitApplies && !defaultExpanded && enrollmentQuota.spotsRemaining === 0)
+            }
             onClick={handleEnroll}
           >
             {defaultExpanded ? 'Start practicing' : 'Add selected subjects'}

@@ -107,9 +107,10 @@ router.post(
       }
 
       const ids = req.body.subjectIds.filter((id) => typeof id === 'string' && id.trim());
+      const skipLimitCheck = isStaff(req.user.role);
       let enrolled;
       try {
-        enrolled = await enrollUserInSubjects(req.user.id, ids);
+        enrolled = await enrollUserInSubjects(req.user.id, ids, { skipLimitCheck });
       } catch (limitErr) {
         if (limitErr.code === 'SUBJECT_LIMIT_REACHED') {
           return res.status(limitErr.status).json({ error: limitErr.message, code: limitErr.code });

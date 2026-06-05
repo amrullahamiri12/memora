@@ -380,13 +380,15 @@ async function subjectsEnroll(user, body, learnerView = false) {
   }
 
   const { assertCanEnrollSubjects, getEnrollmentQuota } = require('./enrollmentLimits');
-  try {
-    await assertCanEnrollSubjects(user.id, ids);
-  } catch (limitErr) {
-    if (limitErr.code === 'SUBJECT_LIMIT_REACHED') {
-      return { status: limitErr.status, body: { error: limitErr.message, code: limitErr.code } };
+  if (!isStaff(user.role)) {
+    try {
+      await assertCanEnrollSubjects(user.id, ids);
+    } catch (limitErr) {
+      if (limitErr.code === 'SUBJECT_LIMIT_REACHED') {
+        return { status: limitErr.status, body: { error: limitErr.message, code: limitErr.code } };
+      }
+      throw limitErr;
     }
-    throw limitErr;
   }
 
   const added = await enrollUserInSubjectsFast(user.id, ids);
