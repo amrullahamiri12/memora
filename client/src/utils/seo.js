@@ -167,15 +167,35 @@ function injectJsonLd(siteUrl) {
   const script = document.createElement('script');
   script.id = 'memora-jsonld';
   script.type = 'application/ld+json';
+  const logoUrl = `${siteUrl}/memora-logo.png`;
   script.textContent = JSON.stringify({
     '@context': 'https://schema.org',
-    '@type': 'WebApplication',
-    name: 'Memora',
-    url: siteUrl,
-    applicationCategory: 'EducationalApplication',
-    operatingSystem: 'Web',
-    description: ROUTE_META['/'].description,
-    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': `${siteUrl}/#organization`,
+        name: 'Memora',
+        url: siteUrl,
+        logo: logoUrl,
+      },
+      {
+        '@type': 'WebSite',
+        '@id': `${siteUrl}/#website`,
+        name: 'Memora',
+        url: siteUrl,
+        publisher: { '@id': `${siteUrl}/#organization` },
+      },
+      {
+        '@type': 'WebApplication',
+        name: 'Memora',
+        url: siteUrl,
+        applicationCategory: 'EducationalApplication',
+        operatingSystem: 'Web',
+        description: ROUTE_META['/'].description,
+        publisher: { '@id': `${siteUrl}/#organization` },
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      },
+    ],
   });
   document.head.appendChild(script);
 }

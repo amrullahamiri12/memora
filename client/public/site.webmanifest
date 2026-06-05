@@ -1,0 +1,26 @@
+{
+  "name": "Memora — Flashcards, quizzes & study progress",
+  "short_name": "Memora",
+  "description": "Study smarter with flashcards, learn mode, and tests. Track mastery, streaks, and progress.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2d6a6a",
+  "orientation": "portrait-primary",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/memora-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/memora-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

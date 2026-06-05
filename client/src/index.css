@@ -110,6 +110,8 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -120,8 +122,10 @@ body {
   background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
 }
 
 [data-theme='dark'] body {
@@ -472,6 +476,13 @@ main {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Use a >=16px font on small screens so iOS Safari doesn't zoom on focus. */
+@media (max-width: 640px) {
+  .input-field {
+    font-size: 16px;
+  }
 }
 
 .btn-primary {
