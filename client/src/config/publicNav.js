@@ -6,6 +6,7 @@ export const MEMORA_SLOGAN = 'Memora, cultivate your mind';
 /** Top-level marketing header links (left of dropdowns). */
 export const PUBLIC_HEADER_LINKS = [
   { label: 'Home', marketingHome: true },
+  { label: 'Explore', to: '/explore', exact: true },
   { label: 'How it works', to: '/features' },
   { label: 'Pricing', to: '/pricing' },
   { label: 'For teams', to: '/for-teams' },
@@ -43,6 +44,7 @@ export const FOOTER_NAV_SECTIONS = [
   {
     title: 'Get started',
     links: [
+      { label: 'Explore subjects', to: '/explore' },
       { label: 'Create account', to: '/register' },
       { label: 'Sign in', to: '/login' },
     ],

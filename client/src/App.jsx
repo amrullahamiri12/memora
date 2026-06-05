@@ -36,6 +36,8 @@ import ForTeamsPage from './pages/ForTeamsPage';
 import ContactPage from './pages/ContactPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
+import ExplorePage from './pages/ExplorePage';
+import StartSubjectPage from './pages/StartSubjectPage';
 import SeoManager from './components/SeoManager';
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -76,6 +78,8 @@ function AppRoutes() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/home" element={<Landing />} />
+          <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/start/:subjectId" element={<StartSubjectPage />} />
           <Route
             path="/login"
             element={

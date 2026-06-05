@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import PageHeader from '../components/ui/PageHeader';
 import SubjectPicker from '../components/SubjectPicker';
@@ -15,6 +15,7 @@ import { isGuestUser } from '../utils/guest';
 export default function GuestSetupPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [catalog, setCatalog] = useState([]);
   const [subjectIds, setSubjectIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +44,14 @@ export default function GuestSetupPage() {
         const rows = await api('/subjects/catalog');
         if (cancelled) return;
         setCatalog(rows);
+        const preselect = (searchParams.get('subjects') || '')
+          .split(',')
+          .map((id) => id.trim())
+          .filter(Boolean);
+        if (preselect.length > 0) {
+          const valid = preselect.filter((id) => rows.some((s) => s.id === id)).slice(0, 3);
+          if (valid.length > 0) setSubjectIds(valid);
+        }
       } catch (err) {
         if (!cancelled) setError(err.message);
       } finally {
@@ -54,7 +63,7 @@ export default function GuestSetupPage() {
     return () => {
       cancelled = true;
     };
-  }, [user, navigate]);
+  }, [user, navigate, searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

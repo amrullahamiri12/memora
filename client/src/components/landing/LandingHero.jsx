@@ -70,8 +70,8 @@ export default function LandingHero() {
             <span className="landing-hero-accent">remember longer.</span>
           </h1>
           <p className="landing-hero-lead mt-5 max-w-lg text-lg leading-relaxed sm:text-xl">
-            Memora turns your subjects into adaptive practice — enroll in topics, run learn and test
-            sessions, and track progress over time.
+            Memora turns your subjects into adaptive practice — browse a subject below and start
+            free, or enroll in topics and track progress over time.
           </p>
 
           <div className="mt-8 flex max-w-md flex-col gap-3.5 sm:max-w-none">
@@ -99,9 +99,14 @@ export default function LandingHero() {
                   buttonClassName="landing-hero-link text-base sm:text-lg"
                   showDescription={false}
                 />
+                <a
+                  href="#explore-subjects"
+                  className="landing-hero-link text-base font-semibold hover:underline sm:text-lg"
+                >
+                  Browse subjects below ↓
+                </a>
                 <p className="landing-hero-muted text-sm leading-relaxed sm:text-base">
-                  Try the app with no sign-up — you&apos;ll choose subjects next. Create an account
-                  later to keep progress.
+                  Or pick a subject and start instantly — free, with no sign-up.
                 </p>
                 <p className="landing-hero-muted text-sm sm:text-base">
                   Already have an account?{' '}

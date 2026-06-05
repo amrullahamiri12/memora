@@ -18,6 +18,7 @@ A full-stack flashcard web app for studying topics with progress tracking, strea
 
 ### Learners
 - **Guest mode** or full registration with **subject enrollment**; dashboard shows only enrolled subjects
+- **Subject-first entry** on the landing page and [`/explore`](/explore): pick a subject and **Start free** (guest session + enroll in one click); shareable links at `/start/:subjectId`
 - **Add more subjects** anytime from the dashboard
 - **Study hub** per topic: Learn, Flashcards, and Test
 - Session options: shuffle, weak-cards-only, question-type filters (stored per topic in `localStorage`)

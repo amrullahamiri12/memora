@@ -67,6 +67,12 @@ const ROUTE_META = {
     description: 'Get in touch with the Memora team for support, partnerships, or general questions.',
     index: true,
   },
+  '/explore': {
+    title: 'Explore subjects — Memora',
+    description:
+      'Browse Memora subjects and start studying free with no sign-up. Create an account later to save your progress.',
+    index: true,
+  },
   '/privacy': {
     title: 'Privacy policy — Memora',
     description: 'How Memora collects, uses, and protects your account and study data.',
@@ -102,6 +108,7 @@ const NOINDEX_PREFIXES = [
   '/guest',
   '/verify-email',
   '/api-docs',
+  '/start',
 ];
 
 export function getSiteUrl() {
