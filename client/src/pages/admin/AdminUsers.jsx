@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { useAuth } from '../../context/AuthContext';
 import PageHeader from '../../components/ui/PageHeader';
@@ -229,7 +230,16 @@ export default function AdminUsers() {
             ? `${groupSubtitle(userGroup, pagination.total)} (${activeCount} active on this page)`
             : groupSubtitle(userGroup, pagination.total)
         }
-        action={!showForm && <Button onClick={handleAdd}>+ Add user</Button>}
+        action={
+          !showForm && (
+            <div className="flex flex-wrap gap-2">
+              <Link to="/admin/reports/learners">
+                <Button variant="secondary">Engagement report</Button>
+              </Link>
+              <Button onClick={handleAdd}>+ Add user</Button>
+            </div>
+          )
+        }
       />
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">

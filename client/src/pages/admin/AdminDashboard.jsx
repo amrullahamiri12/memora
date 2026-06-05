@@ -318,7 +318,7 @@ export default function AdminDashboard() {
         <div className="mb-4">
           <h2 className="font-display text-xl font-bold text-[var(--text-heading)]">Reports</h2>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Open detailed tables for learners and curriculum.
+            Detailed learner and curriculum analytics — also under Reports in the menu.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">

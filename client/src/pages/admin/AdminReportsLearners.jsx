@@ -80,8 +80,8 @@ export default function AdminReportsLearners() {
         subtitle={`${pagination.total} learners match filters`}
         action={
           <div className="flex flex-wrap gap-2">
-            <Link to="/admin/dashboard">
-              <Button variant="secondary">Back to dashboard</Button>
+            <Link to="/admin/users">
+              <Button variant="secondary">Manage users</Button>
             </Link>
             <Button onClick={handleExport} loading={exporting}>
               Export CSV

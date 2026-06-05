@@ -11,6 +11,13 @@ import {
 import { api } from '../utils/api';
 import ThemeToggle from './ThemeToggle';
 import Logo from './Logo';
+import AdminNavDropdown from './admin/AdminNavDropdown';
+import AdminSubNav from './admin/AdminSubNav';
+import {
+  ADMIN_HEADER_NAV,
+  isAdminPath,
+  isNavItemActive,
+} from '../config/adminNav';
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
@@ -47,24 +54,23 @@ export default function Layout({ children }) {
   };
 
   const isActive = (path) => {
-    if (path === '/admin/dashboard') {
-      return location.pathname === '/admin/dashboard';
-    }
-    if (path === '/admin/cards') {
-      return location.pathname === '/admin/cards';
+    if (path.startsWith('/admin')) {
+      return isNavItemActive(location.pathname, path, path === '/admin/dashboard');
     }
     if (path === '/dashboard') return location.pathname === '/dashboard';
     return location.pathname.startsWith(path);
   };
 
-  const navLink = (to, label) => (
+  const navLink = (to, label, exact = false) => (
     <Link
       to={to}
-      className={`nav-link ${isActive(to) ? 'nav-link-active' : ''}`}
+      className={`nav-link ${isNavItemActive(location.pathname, to, exact) ? 'nav-link-active' : ''}`}
     >
       {label}
     </Link>
   );
+
+  const showAdminSubNav = staff && !studentView && isAdminPath(location.pathname);
 
   const logoTo = staff && !studentView ? '/admin/dashboard' : studentPath('/dashboard');
 
@@ -82,10 +88,17 @@ export default function Layout({ children }) {
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {staff && !studentView ? (
                 <>
-                  {navLink('/admin/dashboard', 'Dashboard')}
-                  {navLink('/admin/cards', 'Cards')}
-                  {navLink('/admin/subjects', 'Subjects')}
-                  {navLink('/admin/users', 'Users')}
+                  {ADMIN_HEADER_NAV.map((item) =>
+                    item.type === 'group' ? (
+                      <AdminNavDropdown
+                        key={item.sectionId}
+                        label={item.label}
+                        sectionId={item.sectionId}
+                      />
+                    ) : (
+                      navLink(item.to, item.label, item.exact)
+                    )
+                  )}
                   {navLink('/account', 'Account')}
                   <button
                     type="button"
@@ -153,6 +166,7 @@ export default function Layout({ children }) {
           </div>
         </div>
       </nav>
+      {showAdminSubNav && <AdminSubNav />}
       {inStudentPreview && (
         <div
           className="border-b border-[var(--accent)]/25 bg-[var(--accent-glow)] px-4 py-2 text-center text-sm text-[var(--text-heading)]"

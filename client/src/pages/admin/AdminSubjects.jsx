@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
@@ -161,6 +162,11 @@ export default function AdminSubjects() {
       <PageHeader
         title="Manage Subjects"
         subtitle="Create subjects and topics for organizing flashcards"
+        action={
+          <Link to="/admin/reports/content">
+            <Button variant="secondary">Content health</Button>
+          </Link>
+        }
       />
 
       {error && <Alert>{error}</Alert>}

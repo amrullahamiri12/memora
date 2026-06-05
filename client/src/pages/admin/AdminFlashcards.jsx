@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import DifficultyBadge from '../../components/DifficultyBadge';
 import QuestionTypeBadge from '../../components/QuestionTypeBadge';
@@ -160,7 +161,12 @@ export default function AdminFlashcards() {
         subtitle={`${pagination.total} cards total`}
         action={
           !showForm && (
-            <Button onClick={() => setShowForm(true)}>+ Add Flashcard</Button>
+            <div className="flex flex-wrap gap-2">
+              <Link to="/admin/subjects">
+                <Button variant="secondary">Subjects</Button>
+              </Link>
+              <Button onClick={() => setShowForm(true)}>+ Add Flashcard</Button>
+            </div>
           )
         }
       />
