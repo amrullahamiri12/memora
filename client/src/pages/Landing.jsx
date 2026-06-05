@@ -19,7 +19,7 @@ export default function Landing() {
 
       <PublicNav />
 
-      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-20 pt-10 page-enter">
+      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-20 pt-12 page-enter sm:pt-14 lg:pt-16">
         <LandingHero />
 
         <section className="mt-20 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

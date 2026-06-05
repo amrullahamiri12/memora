@@ -5,6 +5,18 @@ export const LANDING_HERO = {
   unsplashUrl: 'https://unsplash.com/photos/OP88TNuz5Ho',
 };
 
+export const LANDING_HERO_TRUST = [
+  'Free to start',
+  'No credit card',
+  'Guest mode available',
+];
+
+export const LANDING_HERO_STAT = {
+  icon: '🔥',
+  title: 'Build a streak',
+  text: 'Daily practice that sticks',
+};
+
 export const LANDING_FEATURES = [
   {
     title: 'Learn mode',
