@@ -106,6 +106,7 @@ export default function GuestSetupPage() {
               selectedIds={subjectIds}
               onChange={setSubjectIds}
               disabled={saving}
+              maxSelectable={3}
             />
             <Button
               type="submit"

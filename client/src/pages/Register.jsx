@@ -137,6 +137,7 @@ export default function Register() {
                   selectedIds={subjectIds}
                   onChange={setSubjectIds}
                   disabled={loading}
+                  maxSelectable={3}
                 />
               )}
             </div>
