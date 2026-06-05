@@ -16,7 +16,6 @@ export const FOOTER_NAV_SECTIONS = [
     links: [
       { label: 'Create account', to: '/register' },
       { label: 'Sign in', to: '/login' },
-      { label: 'Reset password', to: '/forgot-password' },
     ],
   },
   {
