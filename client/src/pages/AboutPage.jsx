@@ -62,14 +62,14 @@ export default function AboutPage() {
         </Card>
 
         <Card className="p-6 sm:p-8">
-          <h2 className="text-lg font-semibold text-[var(--text-heading)]">For teams</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-heading)]">Organizations</h2>
           <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
-            Staff admins can manage subjects, flashcards, and learners, run engagement reports, and
-            use learner view to experience the app the same way students do.
+            Schools and teams can use Memora with admin tools, reports, and learner view. See our
+            dedicated page for how organizations use Memora.
           </p>
           <p className="mt-4 text-sm">
-            <Link to="/contact" className="font-semibold text-[var(--accent)] hover:underline">
-              Contact us →
+            <Link to="/for-teams" className="font-semibold text-[var(--accent)] hover:underline">
+              For teams →
             </Link>
           </p>
         </Card>

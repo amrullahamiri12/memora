@@ -16,6 +16,21 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://memora.cards/pricing</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://memora.cards/help</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://memora.cards/for-teams</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://memora.cards/contact</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>

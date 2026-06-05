@@ -44,6 +44,24 @@ const ROUTE_META = {
       'Learn how Memora learn mode, flashcards, and streak tracking help you study smarter and track progress.',
     index: true,
   },
+  '/pricing': {
+    title: 'Pricing — Memora',
+    description:
+      'Memora is free for core study today. See what is included and learn about future Plus and Team plans.',
+    index: true,
+  },
+  '/help': {
+    title: 'Help — Memora',
+    description:
+      'Frequently asked questions about Memora accounts, study modes, streaks, teams, and support.',
+    index: true,
+  },
+  '/for-teams': {
+    title: 'For teams — Memora',
+    description:
+      'Memora for schools and organizations — admin dashboard, content management, learner reports, and learner view.',
+    index: true,
+  },
   '/contact': {
     title: 'Contact us — Memora',
     description: 'Get in touch with the Memora team for support, partnerships, or general questions.',

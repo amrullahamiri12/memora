@@ -595,6 +595,22 @@ main {
   border-color: var(--accent);
 }
 
+.public-nav-menu-btn {
+  cursor: pointer;
+  background: var(--surface);
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.public-nav-menu-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.public-nav-mobile-panel {
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
 .admin-subnav {
   border-color: var(--border);
 }
