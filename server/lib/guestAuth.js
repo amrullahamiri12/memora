@@ -36,26 +36,32 @@ async function createGuest({ deviceId } = {}) {
 
   const trimmedDeviceId = typeof deviceId === 'string' ? deviceId.trim() : '';
   if (trimmedDeviceId) {
-    const binding = await db.query(
-      `SELECT user_id FROM guest_device_bindings WHERE device_id = $1 LIMIT 1`,
-      [trimmedDeviceId]
-    );
-    if (binding.rows[0]) {
-      const existing = await findUserById(binding.rows[0].user_id);
-      if (existing && isUserActive(existing)) {
-        if (isGuestEmail(existing.email)) {
-          return authSuccess(existing);
+    // Device binding is best-effort: if the lookup fails (e.g. table not yet
+    // migrated), fall through to creating a fresh guest rather than erroring.
+    try {
+      const binding = await db.query(
+        `SELECT user_id FROM guest_device_bindings WHERE device_id = $1 LIMIT 1`,
+        [trimmedDeviceId]
+      );
+      if (binding.rows[0]) {
+        const existing = await findUserById(binding.rows[0].user_id);
+        if (existing && isUserActive(existing)) {
+          if (isGuestEmail(existing.email)) {
+            return authSuccess(existing);
+          }
+          return {
+            status: 409,
+            body: {
+              error:
+                'This device already has a Memora account. Sign in to continue, or use another browser to try as a guest.',
+              code: 'GUEST_DEVICE_REGISTERED',
+            },
+          };
         }
-        return {
-          status: 409,
-          body: {
-            error:
-              'This device already has a Memora account. Sign in to continue, or use another browser to try as a guest.',
-            code: 'GUEST_DEVICE_REGISTERED',
-          },
-        };
+        await db.query('DELETE FROM guest_device_bindings WHERE device_id = $1', [trimmedDeviceId]);
       }
-      await db.query('DELETE FROM guest_device_bindings WHERE device_id = $1', [trimmedDeviceId]);
+    } catch (err) {
+      console.error('Guest device binding lookup failed (continuing without binding):', err);
     }
   }
 
@@ -70,10 +76,15 @@ async function createGuest({ deviceId } = {}) {
   );
 
   if (trimmedDeviceId) {
-    await db.query(
-      `INSERT INTO guest_device_bindings (device_id, user_id) VALUES ($1, $2)`,
-      [trimmedDeviceId, userId]
-    );
+    try {
+      await db.query(
+        `INSERT INTO guest_device_bindings (device_id, user_id) VALUES ($1, $2)
+         ON CONFLICT (device_id) DO NOTHING`,
+        [trimmedDeviceId, userId]
+      );
+    } catch (err) {
+      console.error('Guest device binding insert failed (guest still created):', err);
+    }
   }
 
   return authCreated(rows[0]);

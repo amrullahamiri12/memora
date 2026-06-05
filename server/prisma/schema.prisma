@@ -55,8 +55,19 @@ model User {
   progress                  UserProgress[]
   dailyPractice             UserDailyPractice[]
   subjects                  UserSubject[]
+  guestDeviceBinding        GuestDeviceBinding?
 
   @@map("users")
+}
+
+model GuestDeviceBinding {
+  deviceId  String   @id @map("device_id")
+  userId    String   @unique @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("guest_device_bindings")
 }
 
 model Subject {

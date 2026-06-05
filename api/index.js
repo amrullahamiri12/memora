@@ -104,7 +104,8 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST' && match(p, '/auth/guest')) {
       if (!applyRateLimit(res, checkAuthRateLimit(req))) return;
-      const result = await require('../server/lib/fastAuth').createGuest();
+      const body = await parseBody(req);
+      const result = await require('../server/lib/fastAuth').createGuest(body || {});
       return json(res, result.status, result.body);
     }
 
