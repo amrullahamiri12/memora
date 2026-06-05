@@ -1,14 +1,6 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useStudentPreview } from '../hooks/useStudentPreview';
-import { getAppHomePath } from '../utils/appHome';
-import { isStaff } from '../utils/roles';
-import {
-  disableStudentView,
-  enableStudentView,
-  withPreviewQuery,
-} from '../utils/studentView';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { usePublicUserActions } from '../hooks/usePublicUserActions';
 
 function MenuChevron({ open }) {
   return (
@@ -33,42 +25,26 @@ function isMenuLinkActive(pathname, to) {
 }
 
 function menuItemClass(active) {
-  return `admin-nav-dropdown-item block w-full rounded-lg px-3 py-2 text-left text-[0.9375rem] font-medium transition-colors ${
+  return `admin-nav-dropdown-item block w-full rounded-lg px-3 py-2.5 text-left text-[0.9375rem] font-medium transition-colors ${
     active
       ? 'bg-[var(--accent-glow)] text-[var(--accent)]'
       : 'text-[var(--text)] hover:bg-[var(--surface-hover)] hover:text-[var(--accent)]'
   }`;
 }
 
+/** Desktop / tablet-wide only — account menu in the header bar. */
 export default function PublicUserMenu() {
-  const { user, logout } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
-  const studentPreview = useStudentPreview();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const menuId = useId();
-
-  const staff = isStaff(user?.role);
-  const inStudentPreview = staff && studentPreview;
-
-  const appHomePath = getAppHomePath(user, inStudentPreview);
-  const appHomeLabel = staff && !inStudentPreview ? 'Admin' : 'Dashboard';
-
-  const linkItems = useMemo(() => {
-    if (!user) return [];
-
-    const items = [{ type: 'link', to: appHomePath, label: appHomeLabel }];
-
-    if (!staff || inStudentPreview) {
-      const profilePath = inStudentPreview ? withPreviewQuery('/profile') : '/profile';
-      items.push({ type: 'link', to: profilePath, label: 'Profile' });
-    }
-
-    items.push({ type: 'link', to: '/account', label: 'Account' });
-
-    return items;
-  }, [user, staff, inStudentPreview, appHomePath, appHomeLabel]);
+  const {
+    user,
+    menuLinks,
+    handleLogout,
+    enterStudentPreview,
+    showLearnerView,
+  } = usePublicUserActions();
 
   useEffect(() => {
     if (!open) return undefined;
@@ -95,26 +71,13 @@ export default function PublicUserMenu() {
     setOpen(false);
   }, [location.pathname]);
 
-  const handleLogout = async () => {
-    setOpen(false);
-    disableStudentView();
-    await logout();
-    navigate('/login');
-  };
-
-  const enterStudentPreview = () => {
-    setOpen(false);
-    enableStudentView();
-    navigate(withPreviewQuery('/dashboard'));
-  };
-
   if (!user) return null;
 
   return (
-    <div ref={rootRef} className="public-user-menu relative">
+    <div ref={rootRef} className="public-user-menu relative hidden xl:block">
       <button
         type="button"
-        className="public-user-menu-trigger inline-flex max-w-[12rem] items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm font-medium text-[var(--text-muted)] sm:max-w-[14rem]"
+        className="public-user-menu-trigger inline-flex max-w-[10rem] items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-medium text-[var(--text-muted)] 2xl:max-w-[14rem]"
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={menuId}
@@ -130,43 +93,42 @@ export default function PublicUserMenu() {
           role="menu"
           className="admin-nav-dropdown-menu glass-card absolute right-0 top-[calc(100%+0.35rem)] z-[60] min-w-[12.5rem] rounded-xl border p-1.5 shadow-lg"
         >
-          {linkItems.map((item) => {
-            const active = isMenuLinkActive(location.pathname, item.to);
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                role="menuitem"
-                className={menuItemClass(active)}
-                onClick={() => setOpen(false)}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
+          {menuLinks.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              role="menuitem"
+              className={menuItemClass(isMenuLinkActive(location.pathname, item.to))}
+              onClick={() => setOpen(false)}
+            >
+              {item.label}
+            </Link>
+          ))}
 
-          {staff && !inStudentPreview && (
+          {showLearnerView && (
             <button
               type="button"
               role="menuitem"
               className={menuItemClass(false)}
-              onClick={enterStudentPreview}
+              onClick={() => {
+                setOpen(false);
+                enterStudentPreview();
+              }}
             >
               Learner view
             </button>
           )}
 
-          <div
-            className="my-1.5 border-t border-[var(--border)]"
-            role="separator"
-            aria-hidden
-          />
+          <div className="my-1.5 border-t border-[var(--border)]" role="separator" aria-hidden />
 
           <button
             type="button"
             role="menuitem"
             className={`${menuItemClass(false)} g_id_signout`}
-            onClick={handleLogout}
+            onClick={() => {
+              setOpen(false);
+              handleLogout();
+            }}
           >
             Log out
           </button>

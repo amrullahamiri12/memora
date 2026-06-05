@@ -522,13 +522,13 @@ main {
 }
 
 .app-nav-inner {
-  padding-top: 0.875rem;
+  padding-top: calc(0.875rem + env(safe-area-inset-top, 0px));
   padding-bottom: 0.875rem;
 }
 
 @media (min-width: 640px) {
   .app-nav-inner {
-    padding-top: 1rem;
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px));
     padding-bottom: 1rem;
   }
 }
@@ -598,17 +598,86 @@ main {
 .public-nav-menu-btn {
   cursor: pointer;
   background: var(--surface);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.public-nav-menu-btn:hover,
+.public-nav-menu-btn:active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--surface-hover);
+}
+
+.public-nav-mobile-backdrop {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.public-nav-mobile-panel {
+  width: 100%;
+  max-width: 100%;
+  animation: public-nav-slide-in 0.22s ease-out;
+}
+
+@media (min-width: 480px) {
+  .public-nav-mobile-panel {
+    width: min(92vw, 22rem);
+    max-width: 22rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .public-nav-mobile-panel {
+    width: min(72vw, 26rem);
+    max-width: 26rem;
+  }
+}
+
+.public-nav-mobile-header {
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+}
+
+.public-nav-mobile-footer {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+.public-nav-mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+.public-nav-mobile-link {
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.public-nav-mobile-close {
+  -webkit-tap-highlight-color: transparent;
   transition: border-color 0.15s, color 0.15s;
 }
 
-.public-nav-menu-btn:hover {
+.public-nav-mobile-close:active {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.public-nav-mobile-panel {
-  padding-top: env(safe-area-inset-top, 0);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+body.public-nav-mobile-open {
+  overflow: hidden;
+  touch-action: none;
+}
+
+@keyframes public-nav-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-nav-mobile-panel {
+    animation: none;
+  }
 }
 
 .admin-subnav {
