@@ -82,7 +82,7 @@ export default function GuestSetupPage() {
       <GuestBanner />
       <PageHeader
         title="What do you want to practice?"
-        subtitle="Pick one or more subjects for your guest session. You can add more later from your dashboard."
+        subtitle="Pick up to 3 subjects for your guest session. You can add more after mastering active subjects."
       />
 
       {error && <Alert>{error}</Alert>}
@@ -106,6 +106,7 @@ export default function GuestSetupPage() {
               selectedIds={subjectIds}
               onChange={setSubjectIds}
               disabled={saving}
+              maxSelectable={3}
             />
             <Button
               type="submit"

@@ -11,6 +11,7 @@ const {
   assertSubjectAccess,
   ensureUserEnrollments,
 } = require('../lib/userSubjects');
+const { getEnrollmentQuota } = require('../lib/enrollmentLimits');
 const { getSubjectsWithProgress, getTopicsWithProgress } = require('../lib/subjectProgress');
 const { parsePagination, paginatedResponse } = require('../lib/pagination');
 
@@ -106,16 +107,26 @@ router.post(
       }
 
       const ids = req.body.subjectIds.filter((id) => typeof id === 'string' && id.trim());
-      const enrolled = await enrollUserInSubjects(req.user.id, ids);
+      let enrolled;
+      try {
+        enrolled = await enrollUserInSubjects(req.user.id, ids);
+      } catch (limitErr) {
+        if (limitErr.code === 'SUBJECT_LIMIT_REACHED') {
+          return res.status(limitErr.status).json({ error: limitErr.message, code: limitErr.code });
+        }
+        throw limitErr;
+      }
       if (enrolled.length === 0) {
         return res.status(400).json({ error: 'No valid subjects selected' });
       }
 
       const subjectIds = await getEnrolledSubjectIds(req.user.id);
       const subjects = await getSubjectsWithProgress(req.user.id, subjectIds);
+      const enrollmentQuota = await getEnrollmentQuota(req.user.id);
       res.json({
         message: `Added ${enrolled.length} subject(s)`,
         subjects,
+        enrollmentQuota,
       });
     } catch (err) {
       console.error(err);

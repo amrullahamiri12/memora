@@ -92,6 +92,7 @@ export default function Dashboard() {
 
       <AddSubjectsPanel
         defaultExpanded={!loading && subjects.length === 0}
+        enrolledSubjects={subjects}
         onEnrolled={(next) => {
           setSubjects(next);
           loadDashboard();

@@ -86,6 +86,17 @@ async function register({ name, email, password, subjectIds }) {
     return { status: 400, body: { error: 'Select at least one subject to practice' } };
   }
 
+  const { MAX_ACTIVE_SUBJECTS } = require('./enrollmentLimits');
+  if (ids.length > MAX_ACTIVE_SUBJECTS) {
+    return {
+      status: 422,
+      body: {
+        error: `You can enroll in a maximum of ${MAX_ACTIVE_SUBJECTS} subjects at a time.`,
+        code: 'SUBJECT_LIMIT_REACHED',
+      },
+    };
+  }
+
   const existing = await findUserByEmail(trimmedEmail);
   if (existing) {
     if (existing.deactivatedAt) {
@@ -340,6 +351,17 @@ async function loginWithGoogle({ credential, subjectIds }) {
   }
 
   const ids = (subjectIds || []).filter((id) => typeof id === 'string' && id.trim());
+  const { MAX_ACTIVE_SUBJECTS } = require('./enrollmentLimits');
+  if (ids.length > MAX_ACTIVE_SUBJECTS) {
+    return {
+      status: 422,
+      body: {
+        error: `You can enroll in a maximum of ${MAX_ACTIVE_SUBJECTS} subjects at a time.`,
+        code: 'SUBJECT_LIMIT_REACHED',
+      },
+    };
+  }
+
   const userId = randomUUID();
   const { getPool } = require('./pg');
   const client = await getPool().connect();

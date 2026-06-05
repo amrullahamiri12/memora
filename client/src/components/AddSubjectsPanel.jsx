@@ -4,6 +4,7 @@ import Button from './ui/Button';
 import Alert from './ui/Alert';
 import SubjectPicker from './SubjectPicker';
 import { api } from '../utils/api';
+import { deriveEnrollmentQuota, MAX_ACTIVE_SUBJECTS } from '../utils/enrollmentQuota';
 
 async function fetchAvailableSubjects() {
   try {
@@ -19,7 +20,11 @@ async function fetchAvailableSubjects() {
   }
 }
 
-export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }) {
+export default function AddSubjectsPanel({
+  onEnrolled,
+  defaultExpanded = false,
+  enrolledSubjects = [],
+}) {
   const [available, setAvailable] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +51,8 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
   useEffect(() => {
     if (defaultExpanded) setExpanded(true);
   }, [defaultExpanded]);
+
+  const enrollmentQuota = deriveEnrollmentQuota(enrolledSubjects);
 
   const handleEnroll = async () => {
     if (selectedIds.length === 0) {
@@ -98,7 +105,9 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
       <Card className="mb-8 p-5">
         <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
-          No subjects are set up yet. Ask an admin to add subjects and flashcards.
+          {enrollmentQuota.spotsRemaining === 0
+            ? `You are at the ${MAX_ACTIVE_SUBJECTS}-subject active limit. Master your current subjects to unlock more.`
+            : 'No subjects are set up yet. Ask an admin to add subjects and flashcards.'}
         </p>
       </Card>
     );
@@ -111,8 +120,10 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
           <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
           <p className="text-sm text-[var(--text-muted)]">
             {defaultExpanded
-              ? 'Select one or more subjects to get started'
-              : `Expand what you study — ${available.length} available`}
+              ? `Select up to ${MAX_ACTIVE_SUBJECTS} subjects to get started`
+              : enrollmentQuota.spotsRemaining > 0
+                ? `Expand what you study — ${available.length} available · ${enrollmentQuota.spotsRemaining} active slot${enrollmentQuota.spotsRemaining === 1 ? '' : 's'} left`
+                : `Master your current subjects to unlock more (max ${MAX_ACTIVE_SUBJECTS} active)`}
           </p>
         </div>
         {!defaultExpanded && (
@@ -129,18 +140,24 @@ export default function AddSubjectsPanel({ onEnrolled, defaultExpanded = false }
 
       {(expanded || defaultExpanded) && (
         <div className="mt-5">
+          {enrollmentQuota.spotsRemaining === 0 && (
+            <Alert type="warning">
+              You already have {MAX_ACTIVE_SUBJECTS} active subjects. Master one to add another.
+            </Alert>
+          )}
           {error && <Alert>{error}</Alert>}
           <SubjectPicker
             subjects={available}
             selectedIds={selectedIds}
             onChange={setSelectedIds}
             disabled={saving}
+            maxSelectable={defaultExpanded ? MAX_ACTIVE_SUBJECTS : enrollmentQuota.spotsRemaining}
           />
           <Button
             type="button"
             className="mt-4 w-full sm:w-auto"
             loading={saving}
-            disabled={selectedIds.length === 0}
+            disabled={selectedIds.length === 0 || (!defaultExpanded && enrollmentQuota.spotsRemaining === 0)}
             onClick={handleEnroll}
           >
             {defaultExpanded ? 'Start practicing' : 'Add selected subjects'}

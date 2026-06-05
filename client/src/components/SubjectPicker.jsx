@@ -6,6 +6,7 @@ export default function SubjectPicker({
   selectedIds,
   onChange,
   disabled = false,
+  maxSelectable = null,
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -48,8 +49,11 @@ export default function SubjectPicker({
     return <p className="text-sm text-[var(--text-muted)]">No subjects available yet.</p>;
   }
 
+  const atMax = maxSelectable != null && selectedSubjects.length >= maxSelectable;
+
   const addSubject = (id) => {
     if (disabled || !id || selectedSet.has(id)) return;
+    if (atMax) return;
     onChange([...selectedIds, id]);
     setQuery('');
     setOpen(false);
@@ -62,7 +66,8 @@ export default function SubjectPicker({
 
   const selectAll = () => {
     if (disabled) return;
-    onChange(subjects.map((s) => s.id));
+    const all = subjects.map((s) => s.id);
+    onChange(maxSelectable != null ? all.slice(0, maxSelectable) : all);
     setQuery('');
     setOpen(false);
   };
@@ -105,14 +110,22 @@ export default function SubjectPicker({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-[var(--text-muted)]">
           {selectedSubjects.length === 0
-            ? 'Choose at least one subject'
-            : `${selectedSubjects.length} selected`}
+            ? maxSelectable != null
+              ? `Choose up to ${maxSelectable} subjects`
+              : 'Choose at least one subject'
+            : maxSelectable != null
+              ? `${selectedSubjects.length} / ${maxSelectable} selected`
+              : `${selectedSubjects.length} selected`}
         </p>
         {subjects.length > 1 && (
           <div className="flex gap-3 text-xs font-medium">
             <button
               type="button"
-              disabled={disabled || selectedSubjects.length === subjects.length}
+              disabled={
+                disabled ||
+                selectedSubjects.length === subjects.length ||
+                (maxSelectable != null && selectedSubjects.length >= maxSelectable)
+              }
               onClick={selectAll}
               className="text-[var(--accent)] hover:underline disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -144,9 +157,9 @@ export default function SubjectPicker({
               aria-controls={listId}
               aria-autocomplete="list"
               autoComplete="off"
-              disabled={disabled}
+              disabled={disabled || atMax}
               value={query}
-              placeholder="Search or pick a subject…"
+              placeholder={atMax ? 'Selection limit reached' : 'Search or pick a subject…'}
               className="input-field w-full pr-9 text-sm"
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -261,7 +274,7 @@ export default function SubjectPicker({
             );
           })}
         </ul>
-        {unselected.length > 0 && (
+        {unselected.length > 0 && !atMax && (
           <p className="text-xs text-[var(--text-muted)]">
             Use the search field above to add more subjects.
           </p>

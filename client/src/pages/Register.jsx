@@ -118,7 +118,7 @@ export default function Register() {
                 Subjects to practice
               </p>
               <p className="mb-3 text-xs text-[var(--text-muted)]">
-                Search and click subjects to add them. You can enroll in more later from your dashboard.
+                Pick up to 3 subjects now. You can add more later after mastering active subjects.
               </p>
               {catalogLoading ? (
                 <p className="text-sm text-[var(--text-muted)]">Loading subjects…</p>
@@ -137,6 +137,7 @@ export default function Register() {
                   selectedIds={subjectIds}
                   onChange={setSubjectIds}
                   disabled={loading}
+                  maxSelectable={3}
                 />
               )}
             </div>

@@ -379,17 +379,29 @@ async function subjectsEnroll(user, body, learnerView = false) {
     return { status: 400, body: { error: 'Select at least one subject' } };
   }
 
+  const { assertCanEnrollSubjects, getEnrollmentQuota } = require('./enrollmentLimits');
+  try {
+    await assertCanEnrollSubjects(user.id, ids);
+  } catch (limitErr) {
+    if (limitErr.code === 'SUBJECT_LIMIT_REACHED') {
+      return { status: limitErr.status, body: { error: limitErr.message, code: limitErr.code } };
+    }
+    throw limitErr;
+  }
+
   const added = await enrollUserInSubjectsFast(user.id, ids);
   if (added === 0) {
     return { status: 400, body: { error: 'No valid subjects selected' } };
   }
 
   const dash = await dashboardSubjects(user, learnerView);
+  const enrollmentQuota = await getEnrollmentQuota(user.id);
   return {
     status: 200,
     body: {
       message: `Added ${added} subject(s)`,
       subjects: dash.body,
+      enrollmentQuota,
     },
   };
 }

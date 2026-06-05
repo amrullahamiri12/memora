@@ -225,7 +225,7 @@ router.post(
       });
 
       if (role === 'USER' && Array.isArray(req.body.subjectIds) && req.body.subjectIds.length > 0) {
-        await enrollUserInSubjects(user.id, req.body.subjectIds);
+        await enrollUserInSubjects(user.id, req.body.subjectIds, { skipLimitCheck: true });
       }
 
       res.status(201).json(formatAdminUser(user));

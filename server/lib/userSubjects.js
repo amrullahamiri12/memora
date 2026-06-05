@@ -1,7 +1,7 @@
 const prisma = require('./prisma');
 const { shouldRestrictToEnrolledSubjects } = require('./learnerView');
 
-async function enrollUserInSubjects(userId, subjectIds) {
+async function enrollUserInSubjects(userId, subjectIds, { skipLimitCheck = false } = {}) {
   const unique = [...new Set(subjectIds)];
   if (unique.length === 0) return [];
 
@@ -11,6 +11,11 @@ async function enrollUserInSubjects(userId, subjectIds) {
   });
   const validIds = existing.map((s) => s.id);
   if (validIds.length === 0) return [];
+
+  if (!skipLimitCheck) {
+    const { assertCanEnrollSubjects } = require('./enrollmentLimits');
+    await assertCanEnrollSubjects(userId, validIds);
+  }
 
   await Promise.all(
     validIds.map((subjectId) =>
@@ -64,7 +69,7 @@ async function ensureUserEnrollments(userId) {
     ...new Set(progress.map((p) => p.flashcard.topic.subjectId).filter(Boolean)),
   ];
   if (fromProgress.length > 0) {
-    await enrollUserInSubjects(userId, fromProgress);
+    await enrollUserInSubjects(userId, fromProgress, { skipLimitCheck: true });
   }
 }
 
