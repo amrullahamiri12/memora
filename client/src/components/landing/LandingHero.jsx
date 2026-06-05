@@ -15,8 +15,7 @@ export default function LandingHero() {
   const staff = isStaff(user?.role);
   const inStudentPreview = staff && studentPreview;
   const appHomePath = getAppHomePath(user, inStudentPreview);
-  const appHomeLabel =
-    staff && !inStudentPreview ? 'Go to Admin' : 'Go to Dashboard';
+  const appHomeLabel = 'Go to Dashboard';
 
   const slideCount = LANDING_HERO_SLIDES.length;
   const activeSlide = LANDING_HERO_SLIDES[activeIndex];

@@ -44,6 +44,8 @@ export default function PublicUserMenu() {
     handleLogout,
     enterStudentPreview,
     showLearnerView,
+    showExitLearnerView,
+    exitStudentPreview,
   } = usePublicUserActions();
 
   useEffect(() => {
@@ -116,6 +118,20 @@ export default function PublicUserMenu() {
               }}
             >
               Learner view
+            </button>
+          )}
+
+          {showExitLearnerView && (
+            <button
+              type="button"
+              role="menuitem"
+              className={menuItemClass(false)}
+              onClick={() => {
+                setOpen(false);
+                exitStudentPreview();
+              }}
+            >
+              Exit learner view
             </button>
           )}
 

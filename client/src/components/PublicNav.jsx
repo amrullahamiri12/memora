@@ -79,6 +79,8 @@ export default function PublicNav() {
     handleLogout,
     enterStudentPreview,
     showLearnerView,
+    showExitLearnerView,
+    exitStudentPreview,
   } = usePublicUserActions();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -271,6 +273,18 @@ export default function PublicNav() {
                         }}
                       >
                         Learner view
+                      </button>
+                    ) : null}
+                    {showExitLearnerView ? (
+                      <button
+                        type="button"
+                        className="public-nav-mobile-link block w-full rounded-xl px-4 py-3 text-left text-base font-medium text-[var(--text-heading)] active:bg-[var(--surface-hover)]"
+                        onClick={() => {
+                          closeMobile();
+                          exitStudentPreview();
+                        }}
+                      >
+                        Exit learner view
                       </button>
                     ) : null}
                     <button

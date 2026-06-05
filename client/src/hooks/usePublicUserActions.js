@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useStudentPreview } from '../hooks/useStudentPreview';
-import { getAppHomePath } from '../utils/appHome';
 import { isStaff } from '../utils/roles';
 import {
   disableStudentView,
@@ -14,24 +13,18 @@ export function usePublicUserActions() {
   const navigate = useNavigate();
   const studentPreview = useStudentPreview();
   const staff = isStaff(user?.role);
-  const inStudentPreview = staff && studentPreview;
-
-  const appHomePath = getAppHomePath(user, inStudentPreview);
-  const appHomeLabel = staff && !inStudentPreview ? 'Admin' : 'Dashboard';
 
   const menuLinks = user
-    ? [
-        { to: appHomePath, label: appHomeLabel },
-        ...(!staff || inStudentPreview
-          ? [
-              {
-                to: inStudentPreview ? withPreviewQuery('/profile') : '/profile',
-                label: 'Profile',
-              },
-            ]
-          : []),
-        { to: '/account', label: 'Account' },
-      ]
+    ? staff
+      ? [
+          { to: '/admin/dashboard', label: 'Dashboard' },
+          { to: '/account', label: 'Account' },
+        ]
+      : [
+          { to: '/dashboard', label: 'Dashboard' },
+          { to: '/profile', label: 'Profile' },
+          { to: '/account', label: 'Account' },
+        ]
     : [];
 
   const handleLogout = async () => {
@@ -45,13 +38,19 @@ export function usePublicUserActions() {
     navigate(withPreviewQuery('/dashboard'));
   };
 
+  const exitStudentPreview = () => {
+    disableStudentView();
+    navigate('/admin/dashboard');
+  };
+
   return {
     user,
     staff,
-    inStudentPreview,
     menuLinks,
     handleLogout,
     enterStudentPreview,
-    showLearnerView: staff && !inStudentPreview,
+    exitStudentPreview,
+    showLearnerView: staff && !studentPreview,
+    showExitLearnerView: staff && studentPreview,
   };
 }
