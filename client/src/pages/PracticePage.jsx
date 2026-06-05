@@ -9,6 +9,7 @@ import Card from '../components/ui/Card';
 import StatCard from '../components/ui/StatCard';
 import EmptyState from '../components/ui/EmptyState';
 import StudyTruncatedNotice from '../components/StudyTruncatedNotice';
+import StudyContextHeader from '../components/StudyContextHeader';
 import { api } from '../utils/api';
 import {
   getStudyOptions,
@@ -150,6 +151,7 @@ export default function PracticePage() {
       state: {
         topic: { id: topicId, name: topic?.name, totalCards: topic?.totalAvailable },
         subjectId: topic?.subject?.id,
+        subjectName: topic?.subject?.name,
       },
     });
   };
@@ -193,7 +195,13 @@ export default function PracticePage() {
             <h1 className="mb-2 text-2xl font-bold">
               {isTest ? 'Test complete!' : 'Session complete!'}
             </h1>
-            <p className="mb-6 text-[var(--text-muted)]">{topic.name}</p>
+            <StudyContextHeader
+              className="mb-6"
+              subjectId={topic.subject?.id}
+              subjectName={topic.subject?.name}
+              topicName={topic.name}
+              modeLabel={isTest ? 'Test mode' : 'Learn mode'}
+            />
 
             <div className="score-reveal mb-2 text-6xl font-bold text-[var(--accent)]">
               {percentCorrect}%
@@ -227,6 +235,7 @@ export default function PracticePage() {
               state={{
                 topic: { id: topicId, name: topic.name, totalCards: topic.totalAvailable },
                 subjectId: topic.subject.id,
+                subjectName: topic.subject.name,
               }}
               className="flex-1"
             >
@@ -262,12 +271,14 @@ export default function PracticePage() {
       </div>
 
       <div className="mb-6">
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">{topic.name}</h1>
-            <p className="text-sm text-[var(--text-muted)]">{modeLabel} mode</p>
-          </div>
-          <span className="rounded-full bg-[var(--accent-glow)] px-3 py-1 text-sm font-medium text-[var(--accent)]">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <StudyContextHeader
+            subjectId={topic.subject?.id}
+            subjectName={topic.subject?.name}
+            topicName={topic.name}
+            modeLabel={`${modeLabel} mode`}
+          />
+          <span className="shrink-0 rounded-full bg-[var(--accent-glow)] px-3 py-1 text-sm font-medium text-[var(--accent)]">
             {currentIndex + 1} / {topic.flashcards.length}
           </span>
         </div>

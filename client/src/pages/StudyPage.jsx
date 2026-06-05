@@ -3,7 +3,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import StudyModeCard from '../components/StudyModeCard';
 import StudyOptions from '../components/StudyOptions';
-import PageHeader from '../components/ui/PageHeader';
+import StudyContextHeader from '../components/StudyContextHeader';
 import Spinner from '../components/ui/Spinner';
 import Alert from '../components/ui/Alert';
 import { api } from '../utils/api';
@@ -18,8 +18,10 @@ export default function StudyPage() {
   const location = useLocation();
   const stateTopic = location.state?.topic;
   const subjectId = location.state?.subjectId;
+  const subjectNameFromState = location.state?.subjectName;
 
   const [topic, setTopic] = useState(stateTopic || null);
+  const [subjectName, setSubjectName] = useState(subjectNameFromState || null);
   const [options, setOptions] = useState(() => getStudyOptions(topicId));
   const [cardCount, setCardCount] = useState(stateTopic?.totalCards ?? null);
   const [loading, setLoading] = useState(!stateTopic);
@@ -33,6 +35,7 @@ export default function StudyPage() {
     if (stateTopic) {
       setTopic(stateTopic);
       setCardCount(stateTopic.totalCards);
+      if (subjectNameFromState) setSubjectName(subjectNameFromState);
       setLoading(false);
       return;
     }
@@ -45,6 +48,7 @@ export default function StudyPage() {
             totalCards: data.totalAvailable,
             subjectId: data.subject?.id,
           });
+          if (data.subject?.name) setSubjectName(data.subject.name);
           setCardCount(data.totalAvailable);
         })
         .catch((err) => setError(err.message))
@@ -53,6 +57,7 @@ export default function StudyPage() {
     }
     api(`/subjects/${subjectId}/topics`)
       .then((subject) => {
+        setSubjectName(subject.name);
         const found = subject.topics.find((t) => t.id === topicId);
         if (found) {
           setTopic(found);
@@ -63,7 +68,7 @@ export default function StudyPage() {
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [subjectId, topicId, stateTopic]);
+  }, [subjectId, subjectNameFromState, topicId, stateTopic]);
 
   useEffect(() => {
     const q = buildFlashcardsQuery('learn', options);
@@ -110,10 +115,15 @@ export default function StudyPage() {
         ← Back to topics
       </Link>
 
-      <PageHeader
-        title={topic.name}
-        subtitle={`${cardCount ?? '…'} cards · Pick how you want to study`}
+      <StudyContextHeader
+        className="mb-2"
+        subjectId={resolvedSubjectId}
+        subjectName={subjectName}
+        topicName={topic.name}
       />
+      <p className="mb-8 text-base text-[var(--text-muted)]">
+        {cardCount ?? '…'} cards · Pick how you want to study
+      </p>
 
       <StudyOptions options={options} onChange={handleOptionsChange} />
 

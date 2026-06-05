@@ -9,6 +9,7 @@ import Card from '../components/ui/Card';
 import StatCard from '../components/ui/StatCard';
 import EmptyState from '../components/ui/EmptyState';
 import StudyTruncatedNotice from '../components/StudyTruncatedNotice';
+import StudyContextHeader from '../components/StudyContextHeader';
 import { api } from '../utils/api';
 import { getStudyOptions, buildFlashcardsQuery, saveLastTopic } from '../utils/studyStorage';
 
@@ -133,7 +134,13 @@ export default function FlashcardsPage() {
         <div className="mx-auto max-w-lg text-center">
           <Card className="mb-6 session-complete-card">
             <h1 className="mb-2 text-2xl font-bold">Flashcards complete!</h1>
-            <p className="mb-6 text-[var(--text-muted)]">{topic.name}</p>
+            <StudyContextHeader
+              className="mb-6"
+              subjectId={topic.subject?.id}
+              subjectName={topic.subject?.name}
+              topicName={topic.name}
+              modeLabel="Flashcards"
+            />
             <div className="grid grid-cols-3 gap-4">
               <StatCard value={session.reviewed} label="Reviewed" />
               <StatCard value={session.gotIt} label="Got it" accent="success" />
@@ -154,7 +161,15 @@ export default function FlashcardsPage() {
             >
               Study again
             </Button>
-            <Link to={`/study/${topicId}`} state={{ topic: { id: topicId, name: topic.name, totalCards: topic.flashcards.length }, subjectId: topic.subject.id }} className="flex-1">
+            <Link
+              to={`/study/${topicId}`}
+              state={{
+                topic: { id: topicId, name: topic.name, totalCards: topic.flashcards.length },
+                subjectId: topic.subject.id,
+                subjectName: topic.subject.name,
+              }}
+              className="flex-1"
+            >
               <Button variant="secondary" className="w-full">
                 Study hub
               </Button>
@@ -172,16 +187,25 @@ export default function FlashcardsPage() {
     <Layout>
       <Link
         to={`/study/${topicId}`}
-        state={{ topic: { id: topicId, name: topic.name, totalCards: topic.totalAvailable }, subjectId: topic.subject.id }}
+        state={{
+          topic: { id: topicId, name: topic.name, totalCards: topic.totalAvailable },
+          subjectId: topic.subject.id,
+          subjectName: topic.subject.name,
+        }}
         className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-[var(--accent)] hover:underline"
       >
         ← Study options
       </Link>
 
       <div className="mb-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h1 className="text-xl font-bold">{topic.name}</h1>
-          <span className="rounded-full bg-[var(--accent-glow)] px-3 py-1 text-sm font-medium text-[var(--accent)]">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <StudyContextHeader
+            subjectId={topic.subject?.id}
+            subjectName={topic.subject?.name}
+            topicName={topic.name}
+            modeLabel="Flashcards · tap card to flip"
+          />
+          <span className="shrink-0 rounded-full bg-[var(--accent-glow)] px-3 py-1 text-sm font-medium text-[var(--accent)]">
             {currentIndex + 1} / {topic.flashcards.length}
           </span>
         </div>
@@ -191,7 +215,6 @@ export default function FlashcardsPage() {
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-        <p className="mt-2 text-sm text-[var(--text-muted)]">Flashcards · tap card to flip</p>
       </div>
 
       <StudyTruncatedNotice topic={topic} />
