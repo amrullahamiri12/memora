@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import PageHeader from '../../components/ui/PageHeader';
@@ -9,6 +9,11 @@ import EmptyState from '../../components/ui/EmptyState';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import { api } from '../../utils/api';
+
+function defaultCollapsedIds(subjects) {
+  if (subjects.length <= 1) return new Set();
+  return new Set(subjects.map((s) => s.id));
+}
 
 export default function AdminSubjects() {
   const [subjects, setSubjects] = useState([]);
@@ -22,6 +27,7 @@ export default function AdminSubjects() {
   const [editingTopic, setEditingTopic] = useState(null);
   const [editTopicName, setEditTopicName] = useState('');
   const [collapsedIds, setCollapsedIds] = useState(() => new Set());
+  const collapseInitialized = useRef(false);
 
   const isExpanded = useCallback((subjectId) => !collapsedIds.has(subjectId), [collapsedIds]);
 
@@ -49,10 +55,22 @@ export default function AdminSubjects() {
     setCollapsedIds(new Set(subjects.map((s) => s.id)));
   };
 
-  const loadSubjects = () => {
+  const loadSubjects = ({ expandSubjectId } = {}) => {
     setLoading(true);
     api('/admin/subjects')
-      .then(setSubjects)
+      .then((data) => {
+        setSubjects(data);
+        if (!collapseInitialized.current) {
+          setCollapsedIds(defaultCollapsedIds(data));
+          collapseInitialized.current = true;
+        } else if (expandSubjectId) {
+          setCollapsedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(expandSubjectId);
+            return next;
+          });
+        }
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   };
@@ -66,12 +84,12 @@ export default function AdminSubjects() {
     if (!newSubject.trim()) return;
     setError('');
     try {
-      await api('/admin/subjects', {
+      const created = await api('/admin/subjects', {
         method: 'POST',
         body: JSON.stringify({ name: newSubject.trim() }),
       });
       setNewSubject('');
-      loadSubjects();
+      loadSubjects({ expandSubjectId: created.id });
     } catch (err) {
       setError(err.message);
     }
@@ -119,7 +137,7 @@ export default function AdminSubjects() {
       });
       setNewTopic('');
       setAddingTopicFor(null);
-      loadSubjects();
+      loadSubjects({ expandSubjectId: subjectId });
     } catch (err) {
       setError(err.message);
     }
@@ -187,7 +205,12 @@ export default function AdminSubjects() {
         <EmptyState message="No subjects yet. Add one above or import flashcards via CSV." />
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-wrap justify-end gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-[var(--text-muted)]">
+              Subjects are collapsed by default. Click a subject or the arrow to expand and see its
+              topics.
+            </p>
+            <div className="flex flex-wrap gap-4">
             <button
               type="button"
               onClick={expandAll}
@@ -204,6 +227,7 @@ export default function AdminSubjects() {
             >
               Collapse all
             </button>
+            </div>
           </div>
           {subjects.map((subject) => {
             const expanded = isExpanded(subject.id);
@@ -256,8 +280,14 @@ export default function AdminSubjects() {
                       <h2 className="text-lg font-semibold text-[var(--text-heading)]">{subject.name}</h2>
                       <p className="text-sm text-[var(--text-muted)]">
                         {subject.topicCount} topics · {subject.cardCount} cards
-                        {!expanded && subject.topics.length > 0 && (
-                          <span className="text-[var(--text-muted)]"> · click to expand</span>
+                        {!expanded && (
+                          <span className="text-[var(--text-muted)]">
+                            {' '}
+                            ·{' '}
+                            {subject.topicCount > 0
+                              ? 'Expand to see all topics'
+                              : 'Expand to add topics'}
+                          </span>
                         )}
                       </p>
                     </button>
