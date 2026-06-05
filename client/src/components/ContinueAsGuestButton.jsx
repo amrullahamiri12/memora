@@ -4,7 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import Button from './ui/Button';
 import Alert from './ui/Alert';
 
-export default function ContinueAsGuestButton({ className = 'w-full' }) {
+export default function ContinueAsGuestButton({
+  className = 'w-full',
+  buttonClassName = '',
+  showDescription = true,
+}) {
   const { continueAsGuest } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -33,15 +37,18 @@ export default function ContinueAsGuestButton({ className = 'w-full' }) {
       <Button
         type="button"
         variant="secondary"
-        className="w-full py-3"
+        className={`w-full py-3 ${buttonClassName}`.trim()}
         loading={loading}
         onClick={handleClick}
       >
         Continue as guest
       </Button>
-      <p className="mt-2 text-center text-xs text-[var(--text-muted)]">
-        Try the app with no sign-up — you&apos;ll choose subjects next. Create an account later to keep progress.
-      </p>
+      {showDescription && (
+        <p className="mt-2 text-center text-xs text-[var(--text-muted)] sm:text-left">
+          Try the app with no sign-up — you&apos;ll choose subjects next. Create an account later to keep
+          progress.
+        </p>
+      )}
     </div>
   );
 }
