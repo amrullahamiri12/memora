@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
-import { useStudentPreview } from '../hooks/useStudentPreview';
 import PageHeader from '../components/ui/PageHeader';
 import ProgressBar from '../components/ProgressBar';
 import Alert from '../components/ui/Alert';
@@ -13,7 +12,7 @@ import { SubjectCardSkeleton } from '../components/ui/Skeleton';
 import { api } from '../utils/api';
 import { getLastTopic, subjectAccent } from '../utils/studyStorage';
 import { isGuestUser } from '../utils/guest';
-import { isStaff } from '../utils/roles';
+import { usesLearnerEnrollment } from '../utils/enrollmentQuota';
 import GuestBanner from '../components/GuestBanner';
 
 export default function Dashboard() {
@@ -24,10 +23,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [leavingId, setLeavingId] = useState(null);
-  const studentPreview = useStudentPreview();
   const lastTopic = getLastTopic();
-  const canLeaveSubjects = Boolean(user && (!isStaff(user.role) || studentPreview));
-  const showAddSubjects = Boolean(user && (!isStaff(user.role) || studentPreview));
+  const learnerEnrollment = usesLearnerEnrollment(user);
 
   const loadDashboard = () => {
     setLoading(true);
@@ -114,7 +111,7 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {showAddSubjects && (
+      {learnerEnrollment && (
         <AddSubjectsPanel
           defaultExpanded={!loading && subjects.length === 0}
           enrolledSubjects={subjects}
@@ -145,7 +142,7 @@ export default function Dashboard() {
             const isLeaving = leavingId === subject.id;
             return (
               <Card key={subject.id} hover className="relative h-full overflow-hidden p-0">
-                {canLeaveSubjects && (
+                {learnerEnrollment && (
                   <button
                     type="button"
                     disabled={isLeaving}

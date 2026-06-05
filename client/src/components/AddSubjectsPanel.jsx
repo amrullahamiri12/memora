@@ -5,10 +5,10 @@ import Alert from './ui/Alert';
 import SubjectPicker from './SubjectPicker';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
-import { isStaff } from '../utils/roles';
 import {
   AT_ACTIVE_LIMIT_HINT,
   deriveEnrollmentQuota,
+  enrollmentLimitApplies,
   MAX_ACTIVE_SUBJECTS,
 } from '../utils/enrollmentQuota';
 
@@ -34,7 +34,7 @@ export default function AddSubjectsPanel({
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(defaultExpanded);
   const { user } = useAuth();
-  const enrollmentLimitApplies = Boolean(user && !isStaff(user.role));
+  const limitApplies = enrollmentLimitApplies(user);
 
   const enrolledIds = useMemo(
     () => new Set(enrolledSubjects.map((s) => s.id)),
@@ -61,10 +61,8 @@ export default function AddSubjectsPanel({
     if (defaultExpanded) setExpanded(true);
   }, [defaultExpanded]);
 
-  const enrollmentQuota = enrollmentLimitApplies
-    ? deriveEnrollmentQuota(enrolledSubjects)
-    : null;
-  const maxSelectable = enrollmentLimitApplies
+  const enrollmentQuota = limitApplies ? deriveEnrollmentQuota(enrolledSubjects) : null;
+  const maxSelectable = limitApplies
     ? defaultExpanded
       ? MAX_ACTIVE_SUBJECTS
       : enrollmentQuota.spotsRemaining
@@ -146,7 +144,7 @@ export default function AddSubjectsPanel({
       <Card className="mb-8 p-5">
         <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
-          {enrollmentLimitApplies && enrollmentQuota.spotsRemaining === 0
+          {limitApplies && enrollmentQuota.spotsRemaining === 0
             ? `You are at the ${MAX_ACTIVE_SUBJECTS}-subject active limit. ${AT_ACTIVE_LIMIT_HINT}`
             : 'You are enrolled in every subject available.'}
         </p>
@@ -161,31 +159,29 @@ export default function AddSubjectsPanel({
           <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
           <p className="text-sm text-[var(--text-muted)]">
             {defaultExpanded
-              ? enrollmentLimitApplies
+              ? limitApplies
                 ? `Select up to ${MAX_ACTIVE_SUBJECTS} subjects to get started`
                 : 'Select one or more subjects to get started'
-              : enrollmentLimitApplies && enrollmentQuota.spotsRemaining === 0
+              : limitApplies && enrollmentQuota.spotsRemaining === 0
                 ? `At the ${MAX_ACTIVE_SUBJECTS}-subject limit. ${AT_ACTIVE_LIMIT_HINT}`
-                : enrollmentLimitApplies
+                : limitApplies
                   ? `Expand what you study — ${available.length} available · ${enrollmentQuota.spotsRemaining} active slot${enrollmentQuota.spotsRemaining === 1 ? '' : 's'} left`
                   : `Expand what you study — ${available.length} available`}
           </p>
         </div>
-        {!defaultExpanded && (
-          <Button
-            type="button"
-            variant="secondary"
-            className="text-sm"
-            onClick={() => setExpanded((e) => !e)}
-          >
-            {expanded ? 'Hide' : 'Browse subjects'}
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="secondary"
+          className="text-sm"
+          onClick={() => setExpanded((e) => !e)}
+        >
+          {expanded ? 'Hide' : 'Browse subjects'}
+        </Button>
       </div>
 
       {(expanded || defaultExpanded) && (
         <div className="mt-5">
-          {enrollmentLimitApplies && enrollmentQuota.spotsRemaining === 0 && (
+          {limitApplies && enrollmentQuota.spotsRemaining === 0 && (
             <Alert type="warning">
               You already have {MAX_ACTIVE_SUBJECTS} active subjects. {AT_ACTIVE_LIMIT_HINT}
             </Alert>
@@ -204,7 +200,7 @@ export default function AddSubjectsPanel({
             loading={saving}
             disabled={
               selectedIds.length === 0 ||
-              (enrollmentLimitApplies && !defaultExpanded && enrollmentQuota.spotsRemaining === 0)
+              (limitApplies && !defaultExpanded && enrollmentQuota.spotsRemaining === 0)
             }
             onClick={handleEnroll}
           >

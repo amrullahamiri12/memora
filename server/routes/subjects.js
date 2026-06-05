@@ -152,8 +152,7 @@ router.delete('/:id/enroll', async (req, res) => {
 
     const subjectIds = await getEnrolledSubjectIds(req.user.id);
     const subjects = await getSubjectsWithProgress(req.user.id, subjectIds);
-    const skipLimitCheck = isStaff(req.user.role);
-    const enrollmentQuota = skipLimitCheck
+    const enrollmentQuota = isStaff(req.user.role)
       ? staffEnrollmentQuota()
       : deriveQuotaFromSubjects(subjects);
     res.json({
