@@ -27,6 +27,7 @@ export default function Dashboard() {
   const studentPreview = useStudentPreview();
   const lastTopic = getLastTopic();
   const canLeaveSubjects = Boolean(user && (!isStaff(user.role) || studentPreview));
+  const showAddSubjects = Boolean(user && (!isStaff(user.role) || studentPreview));
 
   const loadDashboard = () => {
     setLoading(true);
@@ -113,14 +114,16 @@ export default function Dashboard() {
         </Card>
       )}
 
-      <AddSubjectsPanel
-        defaultExpanded={!loading && subjects.length === 0}
-        enrolledSubjects={subjects}
-        onEnrolled={(next) => {
-          setSubjects(next);
-          loadDashboard();
-        }}
-      />
+      {showAddSubjects && (
+        <AddSubjectsPanel
+          defaultExpanded={!loading && subjects.length === 0}
+          enrolledSubjects={subjects}
+          onEnrolled={(next) => {
+            setSubjects(next);
+            loadDashboard();
+          }}
+        />
+      )}
 
       {loading ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

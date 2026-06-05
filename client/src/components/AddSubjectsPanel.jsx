@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Card from './ui/Card';
 import Button from './ui/Button';
 import Alert from './ui/Alert';
@@ -12,18 +12,14 @@ import {
   MAX_ACTIVE_SUBJECTS,
 } from '../utils/enrollmentQuota';
 
-async function fetchAvailableSubjects() {
-  try {
-    return await api('/subjects/available');
-  } catch {
-    const catalog = await api('/subjects/catalog');
-    return catalog.map((s) => ({
-      id: s.id,
-      name: s.name,
-      topicCount: s.topicCount ?? 0,
-      totalCards: s.totalCards ?? 0,
-    }));
-  }
+async function fetchSubjectCatalog() {
+  const catalog = await api('/subjects/catalog');
+  return catalog.map((s) => ({
+    id: s.id,
+    name: s.name,
+    topicCount: s.topicCount ?? 0,
+    totalCards: s.totalCards ?? 0,
+  }));
 }
 
 export default function AddSubjectsPanel({
@@ -31,7 +27,7 @@ export default function AddSubjectsPanel({
   defaultExpanded = false,
   enrolledSubjects = [],
 }) {
-  const [available, setAvailable] = useState([]);
+  const [catalog, setCatalog] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,20 +36,25 @@ export default function AddSubjectsPanel({
   const { user } = useAuth();
   const enrollmentLimitApplies = Boolean(user && !isStaff(user.role));
 
-  const load = () => {
-    setLoading(true);
-    setError('');
-    fetchAvailableSubjects()
-      .then(setAvailable)
-      .catch((err) => {
-        setError(err.message);
-        setAvailable([]);
-      })
-      .finally(() => setLoading(false));
-  };
+  const enrolledIds = useMemo(
+    () => new Set(enrolledSubjects.map((s) => s.id)),
+    [enrolledSubjects]
+  );
+  const available = useMemo(
+    () => catalog.filter((s) => !enrolledIds.has(s.id)),
+    [catalog, enrolledIds]
+  );
 
   useEffect(() => {
-    load();
+    setLoading(true);
+    setError('');
+    fetchSubjectCatalog()
+      .then(setCatalog)
+      .catch((err) => {
+        setError(err.message);
+        setCatalog([]);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -84,7 +85,6 @@ export default function AddSubjectsPanel({
       setSelectedIds([]);
       setExpanded(false);
       onEnrolled(data.subjects);
-      load();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -103,14 +103,40 @@ export default function AddSubjectsPanel({
     );
   }
 
-  if (error && available.length === 0) {
+  if (error && catalog.length === 0) {
     return (
       <Card className="mb-8 p-5">
         <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
         <Alert className="mt-3">{error}</Alert>
-        <Button type="button" variant="secondary" className="mt-3" onClick={load}>
+        <Button
+          type="button"
+          variant="secondary"
+          className="mt-3"
+          onClick={() => {
+            setLoading(true);
+            setError('');
+            fetchSubjectCatalog()
+              .then(setCatalog)
+              .catch((err) => {
+                setError(err.message);
+                setCatalog([]);
+              })
+              .finally(() => setLoading(false));
+          }}
+        >
           Retry
         </Button>
+      </Card>
+    );
+  }
+
+  if (catalog.length === 0) {
+    return (
+      <Card className="mb-8 p-5">
+        <h2 className="text-lg font-semibold text-[var(--text-heading)]">{title}</h2>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">
+          No subjects are set up yet. Ask an admin to add subjects and flashcards.
+        </p>
       </Card>
     );
   }
@@ -122,7 +148,7 @@ export default function AddSubjectsPanel({
         <p className="mt-2 text-sm text-[var(--text-muted)]">
           {enrollmentLimitApplies && enrollmentQuota.spotsRemaining === 0
             ? `You are at the ${MAX_ACTIVE_SUBJECTS}-subject active limit. ${AT_ACTIVE_LIMIT_HINT}`
-            : 'No subjects are set up yet. Ask an admin to add subjects and flashcards.'}
+            : 'You are enrolled in every subject available.'}
         </p>
       </Card>
     );
